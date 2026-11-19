@@ -22,6 +22,23 @@ strong the WiFi is everywhere in between.
 
 Drag a router in the 3D view to see coverage change live.
 
+### Walk inside
+
+Click **Walk inside** to move through the building at eye level (or switch to
+**Follow** to watch a figure from behind). A live meter shows the signal where you
+stand, the figure changes colour with it, and your path is left on the floor as a
+trail of coloured dots. Walls block you unless you tick **Walk through walls**, so cut
+doorways with the **Door** tool. Keys: W A S D / arrows to move, drag to look, Shift
+to run. On a phone, use the round pad.
+
+### Drawing your real building
+
+- **Add floor plan image**: upload a photo or screenshot of your plan, cropped to the
+  outside walls, then type the real width; the depth follows the image.
+- **Room**: click two opposite corners to add four walls at once.
+- **Wall**: click point to point; walls chain until you press Esc.
+- **Door**: click a wall to cut a 0.9 m doorway.
+
 ## 1. Record readings with a laptop
 
 No packages needed, Python 3.8+. Linux (NetworkManager/iw), macOS and Windows.
@@ -51,8 +68,15 @@ Notes:
 
 ## 2. Or type readings from your phone
 
-Use any WiFi analyzer app that shows dBm. In the page, pick the **Reading** tool,
-click where you stood, and type the number.
+- **iPhone**: install Apple's free *AirPort Utility*, then go to Settings › Apps ›
+  AirPort Utility and turn on *Wi-Fi Scanner*. In the app tap *Wi-Fi Scan* › *Scan*
+  and read the RSSI (e.g. −58 dBm).
+- **Android**: install a free analyzer such as *WiFiman* or *WiFi Analyzer
+  (open-source)*; it shows your connected signal in dBm.
+
+Stand still with the phone at chest height for about 5 seconds, then in the page
+pick the **Reading** tool, click where you stood, and type the number. Take 2 or 3
+readings per room, including far corners.
 
 ## 3. View in 3D
 

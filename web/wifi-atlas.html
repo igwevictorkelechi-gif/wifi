@@ -79,6 +79,30 @@ button.danger { color: var(--danger); }
 .seg button { border: 0; border-radius: 0; background: transparent; padding: 8px 4px; font-size: 12.5px; border-right: 1px solid var(--line); }
 .seg button:last-child { border-right: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg.tools { grid-template-columns: repeat(4, 1fr); }
+.seg.tools button:nth-child(4n) { border-right: 0; }
+.seg.tools button:nth-child(-n+4) { border-bottom: 1px solid var(--line); }
+details.help { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+details.help summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+details.help h4 { margin: 10px 0 2px; font-size: 12.5px; font-family: var(--font-display); }
+details.help ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
+details.help p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.walkbtn { position: absolute; left: 12px; bottom: 12px; z-index: 3; box-shadow: var(--shadow); padding: 9px 14px; font-weight: 600; }
+.walkbar {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; display: flex; gap: 6px; flex-wrap: wrap;
+  justify-content: center; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 8px; box-shadow: var(--shadow); width: max-content; max-width: calc(100% - 24px);
+}
+.walkbar .seg { display: inline-grid; }
+.walkbar .seg button { padding: 6px 12px; }
+.walkbar .hint { flex-basis: 100%; text-align: center; margin: 0; }
+.joy {
+  display: none; position: absolute; left: 16px; bottom: 120px; width: 112px; height: 112px; border-radius: 50%; z-index: 3;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); touch-action: none; opacity: .9;
+}
+.joy i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: var(--accent); pointer-events: none; }
+@media (pointer: coarse) { .stage.walking .joy { display: block; } }
+.stage.walking .toolhint { display: none; }
 .toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--ink); }
 .toggle input { accent-color: var(--accent); }
 
@@ -174,7 +198,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); b
   .legend .ticks span { display: none; }
   .hud { min-width: 0; padding: 8px 10px; }
   .hud .dbm { font-size: 22px; }
-  .toolhint { left: 12px; transform: none; max-width: calc(100% - 100px); text-align: left; border-radius: 10px; }
+  .toolhint { left: 12px; transform: none; max-width: calc(100% - 150px); text-align: left; border-radius: 10px; }
+  .walkbtn { left: auto; right: 12px; }
+  .stage.walking .legend { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -188,9 +214,11 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); b
 
     <section class="block" aria-labelledby="h-tools">
       <h2 id="h-tools">Tool</h2>
-      <div class="seg" role="group" aria-label="Tool">
+      <div class="seg tools" role="group" aria-label="Tool">
         <button id="tool-view" data-tool="view" aria-pressed="true">View</button>
         <button id="tool-wall" data-tool="wall" aria-pressed="false">Wall</button>
+        <button id="tool-room" data-tool="room" aria-pressed="false">Room</button>
+        <button id="tool-door" data-tool="door" aria-pressed="false">Door</button>
         <button id="tool-router" data-tool="router" aria-pressed="false">Router</button>
         <button id="tool-reading" data-tool="reading" aria-pressed="false">Reading</button>
         <button id="tool-erase" data-tool="erase" aria-pressed="false">Erase</button>
@@ -215,6 +243,12 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); b
         <label class="field"><span>Width (m)</span><input id="floorW" type="number" min="2" max="80" step="0.5"></label>
         <label class="field"><span>Depth (m)</span><input id="floorD" type="number" min="2" max="80" step="0.5"></label>
       </div>
+      <div class="row">
+        <button id="planImgBtn">Add floor plan image</button>
+        <button id="planImgDel" class="ghost danger" hidden>Remove image</button>
+      </div>
+      <p class="hint" id="planImgHint">Got a floor plan, sketch or estate-agent picture? Add it, crop it to the outside walls, and type the real width above. Then trace your walls over it.</p>
+      <input type="file" id="planImgIn" accept="image/*" hidden>
       <label class="field"><span>Floor separation in 3D: <b id="explodeVal">2.4 m</b></span><input id="explode" type="range" min="0" max="6" step="0.1" value="2.4"></label>
     </section>
 
@@ -262,6 +296,32 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); b
       <p class="hint">The map blends a multi-wall propagation model with your measured readings. Each reading pulls the map toward what you actually measured nearby.</p>
     </section>
 
+    <section class="block" aria-labelledby="h-phone">
+      <h2 id="h-phone">Measuring with a phone</h2>
+      <details class="help" id="phoneHelp">
+        <summary>How do I see dBm on my phone?</summary>
+        <h4>iPhone</h4>
+        <ol>
+          <li>Install Apple's free <b>AirPort Utility</b> app from the App Store.</li>
+          <li>Open iPhone <b>Settings › Apps › AirPort Utility</b> and turn on <b>Wi-Fi Scanner</b>.</li>
+          <li>Open AirPort Utility, tap <b>Wi-Fi Scan</b> (top right), then <b>Scan</b>.</li>
+          <li>Read the <b>RSSI</b> next to your network, e.g. −58 dBm.</li>
+        </ol>
+        <h4>Android</h4>
+        <ol>
+          <li>Install a free analyzer such as <b>WiFiman</b> or <b>WiFi Analyzer (open-source)</b>.</li>
+          <li>Open it while connected to your WiFi; it shows your signal in dBm.</li>
+        </ol>
+        <h4>Then, for each spot</h4>
+        <ol>
+          <li>Stand still, phone at chest height, and wait about 5 seconds for the number to settle.</li>
+          <li>Here, pick the <b>Reading</b> tool, click where you stood, and type the number.</li>
+          <li>Take 2 or 3 readings per room, including the far corners.</li>
+        </ol>
+        <p>Closer to zero is stronger: −45 is excellent, −67 is fine for video, −80 is barely usable.</p>
+      </details>
+    </section>
+
     <section class="block" aria-labelledby="h-data">
       <h2 id="h-data">Your data</h2>
       <div class="row">
@@ -291,6 +351,20 @@ kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); b
       <div class="ticks" id="legendTicks"></div>
     </div>
     <div class="toolhint" id="toolHint">Drag to orbit · scroll to zoom · drag a router to move it</div>
+    <button class="walkbtn primary" id="walkBtn">Walk inside</button>
+    <div class="walkbar" id="walkBar" hidden>
+      <div class="seg two" role="group" aria-label="Camera">
+        <button id="cam-fp" data-cam="fp" aria-pressed="true">Eye level</button>
+        <button id="cam-follow" data-cam="follow" aria-pressed="false">Follow</button>
+      </div>
+      <button id="walkDown" title="Go down a floor">↓ Floor</button>
+      <button id="walkUp" title="Go up a floor">↑ Floor</button>
+      <label class="toggle"><input type="checkbox" id="ghostWalk"> Walk through walls</label>
+      <button id="trailClear" class="ghost">Clear trail</button>
+      <button id="walkExit" class="primary">Exit</button>
+      <p class="hint" id="walkHelp">W A S D or arrow keys to move · drag to look around · hold Shift to run</p>
+    </div>
+    <div class="joy" id="joy" role="application" aria-label="Movement pad"><i></i></div>
     <form class="pop" id="pop" hidden>
       <h3>Add reading</h3>
       <label class="field"><span>Signal (dBm)</span><input id="popDbm" type="number" min="-100" max="-10" step="1" value="-60" required></label>
@@ -410,7 +484,9 @@ const EXAMPLE = {
 const STORE_KEY = 'wifi-atlas.plan.v1';
 let plan = null;
 let isExample = true;
-const ui = { tool: 'view', floor: 0, mode: 'heat', source: 'best', walls: true, readings: true, grid: true, explode: 2.4, wallMat: 'drywall' };
+const ui = { tool: 'view', floor: 0, mode: 'heat', source: 'best', walls: true, readings: true, grid: true, explode: 2.4, wallMat: 'drywall', walk: false, cam: 'fp', ghost: false };
+let walker = null; // {x, y, f, yaw, pitch} while walking
+let trail = [];   // [{x, y, f, v}] path walked, coloured by signal
 const undoStack = [];
 let suggestion = null; // {apId, x, y, floor, before, after}
 
@@ -422,6 +498,8 @@ function normalize(p) {
     model: { band: p.model && p.model.band === '5' ? '5' : '2.4', n: clamp(+(p.model && p.model.n) || 2.0, 1.6, 3.5) },
     floors: Array.isArray(p.floors) && p.floors.length ? p.floors.map((f, i) => ({
       name: f.name || `Floor ${i + 1}`, width: clamp(+f.width || 10, 2, 80), depth: clamp(+f.depth || 8, 2, 80),
+      image: typeof f.image === 'string' && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(f.image) ? f.image : undefined,
+      imageAspect: +f.imageAspect > 0 ? +f.imageAspect : undefined,
     })) : [{ name: 'Ground floor', width: 10, depth: 8 }],
     walls: [], aps: [], samples: [], networks: {},
   };
@@ -718,10 +796,32 @@ function disposeTree(o) {
   });
 }
 
+// Heatmap fades while tracing over a floor plan image, so the drawing stays readable.
+function heatOpacity(f) {
+  const fl = plan.floors[f];
+  const tracing = ['wall', 'room', 'door', 'erase'].includes(ui.tool);
+  if (fl && fl.image) return tracing ? 0.15 : 0.6;
+  return 0.93;
+}
+const texCache = new Map();
+function planTexture(src) {
+  let t = texCache.get(src);
+  if (!t) {
+    const img = new Image();
+    t = new THREE.Texture(img);
+    t.minFilter = THREE.LinearFilter;
+    img.onload = () => { t.needsUpdate = true; };
+    img.src = src;
+    texCache.set(src, t);
+  }
+  return t;
+}
+
 function buildFloor(f) {
   const fl = plan.floors[f];
   const g = new THREE.Group();
   g.position.y = baseY(f);
+  g.visible = !ui.walk || !walker || f <= walker.f; // while walking, hide floors above you
   const e = extent();
   const fv = { group: g, f };
 
@@ -730,6 +830,13 @@ function buildFloor(f) {
     new THREE.MeshLambertMaterial({ color: new THREE.Color(tokens.grid), transparent: true, opacity: 0.18 }));
   slab.position.set(fl.width / 2 - e.cx, -0.04, fl.depth / 2 - e.cz);
   g.add(slab);
+  if (fl.image) {
+    const ip = new THREE.Mesh(new THREE.PlaneGeometry(fl.width, fl.depth),
+      new THREE.MeshBasicMaterial({ map: planTexture(fl.image), side: THREE.DoubleSide }));
+    ip.rotation.x = -Math.PI / 2;
+    ip.position.set(fl.width / 2 - e.cx, 0.006, fl.depth / 2 - e.cz);
+    g.add(ip);
+  }
   if (ui.grid) {
     const pts = [];
     for (let x = 0; x <= fl.width + 1e-6; x += 1) { pts.push(x - e.cx, 0.012, -e.cz, x - e.cx, 0.012, fl.depth - e.cz); }
@@ -743,7 +850,7 @@ function buildFloor(f) {
   const canvas = document.createElement('canvas'); canvas.width = fd.nx; canvas.height = fd.ny;
   const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
   const heat = new THREE.Mesh(new THREE.PlaneGeometry(fl.width, fl.depth),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.93, side: THREE.DoubleSide, depthWrite: false }));
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: heatOpacity(f), side: THREE.DoubleSide, depthWrite: false }));
   heat.rotation.x = -Math.PI / 2;
   heat.position.set(fl.width / 2 - e.cx, 0.02, fl.depth / 2 - e.cz);
   heat.renderOrder = 1;
@@ -778,7 +885,7 @@ function buildFloor(f) {
     if (w.material === 'concrete' || w.material === 'brick') col.offsetHSL(0, 0, -0.08);
     const h = w.material === 'metal' ? 1.8 : wallH;
     const box = new THREE.Mesh(new THREE.BoxGeometry(L, h, m.thick),
-      new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: w.material === 'glass' ? 0.25 : 0.42, depthWrite: false }));
+      new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: w.material === 'glass' ? (ui.walk ? 0.35 : 0.25) : (ui.walk ? 0.86 : 0.42), depthWrite: false }));
     box.position.set((w.x1 + w.x2) / 2 - e.cx, h / 2, (w.y1 + w.y2) / 2 - e.cz);
     box.rotation.y = -Math.atan2(w.y2 - w.y1, w.x2 - w.x1);
     box.renderOrder = 2;
@@ -881,14 +988,14 @@ function buildLabels() {
   plan.floors.forEach((fl, f) => {
     const d = document.createElement('div'); d.className = 'lbl floor'; d.textContent = fl.name;
     labelsEl.appendChild(d);
-    labelEls.push({ el: d, pos: () => toWorld(fl.width + 0.4, 0, f).add(new THREE.Vector3(0, 0.05, 0)) });
+    labelEls.push({ el: d, f, pos: () => toWorld(fl.width + 0.4, 0, f).add(new THREE.Vector3(0, 0.05, 0)) });
   });
   plan.aps.forEach((ap) => {
     if (!isFinite(ap.x)) return;
     const d = document.createElement('div'); d.className = 'lbl' + (ap.estimated ? ' ghost' : '');
     d.textContent = ap.name + (ap.estimated ? ' (estimated)' : '');
     labelsEl.appendChild(d);
-    labelEls.push({ el: d, pos: () => toWorld(ap.x, ap.y, ap.floor, AP_H + 0.42) });
+    labelEls.push({ el: d, f: ap.floor, pos: () => toWorld(ap.x, ap.y, ap.floor, AP_H + 0.42) });
   });
   if (suggestion) {
     const d = document.createElement('div'); d.className = 'lbl ghost'; d.textContent = 'Best spot';
@@ -900,6 +1007,7 @@ function buildLabels() {
 function updateLabels() {
   const w = stage.clientWidth, h = stage.clientHeight;
   for (const L of labelEls) {
+    if (ui.walk && walker && (L.f > walker.f || (L.el.classList.contains('floor')))) { L.el.hidden = true; continue; }
     const p = L.pos().project(camera);
     if (p.z > 1 || p.z < -1) { L.el.hidden = true; continue; }
     L.el.hidden = false;
@@ -928,10 +1036,11 @@ function rebuild(opts = {}) {
   renderSidebar();
   if (!scene) return;
   world.children.slice().forEach((c) => { world.remove(c); disposeTree(c); });
-  floorViews = []; apMeshes = []; sampleMeshes = []; wallMeshes = []; ghost = null; wallPreview = null;
+  floorViews = []; apMeshes = []; sampleMeshes = []; wallMeshes = []; ghost = null; wallPreview = null; trailObj = null; avatar = null;
   plan.floors.forEach((_, f) => { const fv = buildFloor(f); paintFloor(fv); floorViews.push(fv); });
   buildAps();
   buildGhost();
+  buildWalker();
   buildLabels();
   if (!built || opts.fit) { fitCamera(); built = true; }
 }
@@ -975,9 +1084,10 @@ function pickObject(list) {
 const snap = (v, s = 0.25) => Math.round(v / s) * s;
 
 // ---------- Interaction ----------
-let down = null, dragAp = null, wallStart = null, dragQueued = false;
+let down = null, dragAp = null, wallStart = null, roomStart = null, lookDrag = null, dragQueued = false;
 function onDown(ev) {
   if (!renderer) return;
+  if (ui.walk) { lookDrag = { x: ev.clientX, y: ev.clientY }; renderer.domElement.setPointerCapture(ev.pointerId); return; }
   hidePop();
   down = { x: ev.clientX, y: ev.clientY };
   setRay(ev);
@@ -993,6 +1103,14 @@ function onDown(ev) {
 }
 function onMove(ev) {
   if (!renderer) return;
+  if (ui.walk) {
+    if (lookDrag && walker) {
+      walker.yaw -= (ev.clientX - lookDrag.x) * 0.005;
+      walker.pitch = clamp(walker.pitch - (ev.clientY - lookDrag.y) * 0.004, -1.2, 1.0);
+      lookDrag = { x: ev.clientX, y: ev.clientY };
+    }
+    return;
+  }
   setRay(ev);
   if (dragAp) {
     const h = hitFloor(dragAp.ap.floor);
@@ -1010,6 +1128,10 @@ function onMove(ev) {
     const h = hitFloor(ui.floor);
     if (h) drawWallPreview(wallStart, snapPoint(h.x, h.y));
   }
+  if (ui.tool === 'room' && roomStart) {
+    const h = hitFloor(ui.floor);
+    if (h) drawRoomPreview(roomStart, snapPoint(h.x, h.y));
+  }
   const s = pickObject(sampleMeshes);
   if (s && s.kind === 'sample') { hoverSample(s.sample); return; }
   const h = (ui.tool === 'view') ? hitAnyFloor() : (() => { const r = hitFloor(ui.floor); return r && r.inside ? r : null; })();
@@ -1017,6 +1139,7 @@ function onMove(ev) {
 }
 function onUp(ev) {
   if (!renderer) return;
+  if (ui.walk) { lookDrag = null; return; }
   if (dragAp) {
     controls.enabled = true;
     view.classList.remove('dragging');
@@ -1045,6 +1168,18 @@ function snapPoint(x, y) {
   }
   const fl = plan.floors[ui.floor];
   return best ? { x: best.x, y: best.y } : { x: clamp(snap(x), 0, fl.width), y: clamp(snap(y), 0, fl.depth) };
+}
+function clearPreview() { if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); wallPreview = null; } }
+function drawRoomPreview(a, b) {
+  clearPreview();
+  const pts = [[a.x, a.y], [b.x, a.y], [b.x, b.y], [a.x, b.y], [a.x, a.y]].map(([x, y]) => toWorld(x, y, ui.floor, 0.06));
+  wallPreview = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: new THREE.Color(tokens.accent) }));
+  world.add(wallPreview);
+  setHint(`Room ${fmt(Math.abs(b.x - a.x))} × ${fmt(Math.abs(b.y - a.y))} m · click the opposite corner, Esc to cancel`);
+}
+// True when an existing wall on the floor already covers this segment (shared room edges).
+function wallCovered(f, x1, y1, x2, y2) {
+  return plan.walls.some((w) => w.floor === f && distSeg(x1, y1, w) < 0.06 && distSeg(x2, y2, w) < 0.06);
 }
 function drawWallPreview(a, b) {
   if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); }
@@ -1078,6 +1213,34 @@ function onClick(ev) {
     wallStart = p; // chain walls: next click continues from here
     mutate(() => { plan.walls.push({ floor: ui.floor, x1: a.x, y1: a.y, x2: p.x, y2: p.y, material: ui.wallMat }); });
     drawWallPreview(p, p);
+    return;
+  }
+  if (ui.tool === 'room') {
+    const p = snapPoint(h.x, h.y);
+    if (!roomStart) { roomStart = p; drawRoomPreview(p, p); return; }
+    const a = roomStart;
+    roomStart = null; clearPreview(); setHint();
+    if (Math.abs(p.x - a.x) < 0.5 || Math.abs(p.y - a.y) < 0.5) { toast('That room is too small. Click two opposite corners.'); return; }
+    const x1 = Math.min(a.x, p.x), x2 = Math.max(a.x, p.x), y1 = Math.min(a.y, p.y), y2 = Math.max(a.y, p.y);
+    const sides = [[x1, y1, x2, y1], [x2, y1, x2, y2], [x2, y2, x1, y2], [x1, y2, x1, y1]].filter((sd) => !wallCovered(ui.floor, ...sd));
+    if (!sides.length) { toast('Those walls already exist.'); return; }
+    mutate(() => { sides.forEach(([sx1, sy1, sx2, sy2]) => plan.walls.push({ floor: ui.floor, x1: sx1, y1: sy1, x2: sx2, y2: sy2, material: ui.wallMat })); });
+    toast(`Added a ${fmt(x2 - x1)} × ${fmt(y2 - y1)} m room. Use the Door tool to open doorways.`);
+    return;
+  }
+  if (ui.tool === 'door') {
+    let best = null;
+    plan.walls.forEach((w) => { if (w.floor !== ui.floor) return; const d = distSeg(h.x, h.y, w); if (d < 0.4 && (!best || d < best.d)) best = { w, d }; });
+    if (!best) { toast('Click right on a wall to put a doorway in it.'); return; }
+    const w = best.w, L = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+    const t = clamp(((h.x - w.x1) * (w.x2 - w.x1) + (h.y - w.y1) * (w.y2 - w.y1)) / (L * L), 0, 1);
+    const g = 0.45 / L; // half of a 0.9 m doorway, as a fraction of the wall
+    const at = (u) => ({ x: +(w.x1 + (w.x2 - w.x1) * u).toFixed(3), y: +(w.y1 + (w.y2 - w.y1) * u).toFixed(3) });
+    const parts = [];
+    if (t - g > 0.12 / L) { const q = at(t - g); parts.push({ ...w, x2: q.x, y2: q.y }); }
+    if (t + g < 1 - 0.12 / L) { const q = at(t + g); parts.push({ ...w, x1: q.x, y1: q.y }); }
+    mutate(() => { plan.walls = plan.walls.filter((x) => x !== w).concat(parts); });
+    toast('Doorway added.');
     return;
   }
   if (ui.tool === 'router') {
@@ -1158,6 +1321,212 @@ function clearHud() {
   $('#hudSrc').textContent = '';
 }
 
+// ---------- Walk-through mode ----------
+const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', 'q', 'e']);
+const keys = new Set();
+const joy = { x: 0, y: 0 };
+let avatar = null, trailObj = null, orbitSaved = null, hudTimer = 0, sinceTrail = 0;
+const EYE_H = 1.6, BODY_R = 0.22;
+
+function buildWalker() { buildTrail(); buildAvatar(); }
+function buildTrail() {
+  if (trailObj) { world.remove(trailObj); trailObj.geometry.dispose(); trailObj.material.dispose(); }
+  trailObj = null;
+  if (trail.length) {
+    const pos = [], col = [];
+    for (const p of trail) {
+      if (ui.walk && walker && p.f > walker.f) continue;
+      const w = toWorld(p.x, p.y, p.f, 0.05);
+      pos.push(w.x, w.y, w.z);
+      const c = rssiRGB(p.v);
+      col.push(c[0] / 255, c[1] / 255, c[2] / 255);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    trailObj = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.3, map: dotTexture(), vertexColors: true, transparent: true, alphaTest: 0.4, depthWrite: false }));
+    trailObj.renderOrder = 3;
+    world.add(trailObj);
+  }
+}
+function buildAvatar() {
+  avatar = null;
+  if (!ui.walk || !walker) return;
+  avatar = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.25 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 1.15, 16), mat);
+  body.position.y = 0.6;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), mat);
+  head.position.y = 1.38;
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 10), new THREE.MeshBasicMaterial({ color: new THREE.Color(tokens.ink) }));
+  nose.rotation.x = -Math.PI / 2; nose.position.set(0, 1.38, -0.2);
+  const halo = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 36), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+  halo.rotation.x = -Math.PI / 2; halo.position.y = 0.04;
+  avatar.add(body, head, nose, halo);
+  avatar.userData = { mat, halo };
+  world.add(avatar);
+}
+let dotTex = null;
+function dotTexture() {
+  if (dotTex) return dotTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.arc(32, 32, 28, 0, Math.PI * 2); x.fill();
+  dotTex = new THREE.CanvasTexture(c);
+  return dotTex;
+}
+function startWalk() {
+  if (!renderer) return;
+  setTool('view'); hidePop();
+  orbitSaved = { pos: camera.position.clone(), target: controls.target.clone(), mode: ui.mode, fov: camera.fov };
+  if (!walker || walker.f >= plan.floors.length) {
+    const f = ui.floor, fl = plan.floors[f];
+    const ap = placedAps().find((a) => a.floor === f);
+    walker = { f, x: ap ? clamp(ap.x + 0.9, 0.4, fl.width - 0.4) : fl.width / 2, y: ap ? clamp(ap.y + 0.9, 0.4, fl.depth - 0.4) : fl.depth / 2, yaw: 0, pitch: -0.12 };
+    walker.yaw = Math.atan2(-(fl.width / 2 - walker.x), -(fl.depth / 2 - walker.y)); // face the middle of the floor
+  }
+  ui.walk = true; ui.mode = 'heat';
+  $$('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.mode === 'heat'));
+  controls.enabled = false;
+  camera.fov = 70; camera.updateProjectionMatrix();
+  stage.classList.add('walking');
+  $('#walkBtn').hidden = true; $('#walkBar').hidden = false;
+  $('#walkHelp').textContent = matchMedia('(pointer: coarse)').matches
+    ? 'Use the round pad to move · drag the view to look around'
+    : 'W A S D or arrow keys to move · drag to look around · hold Shift to run · Esc to exit';
+  prepWalls();
+  rebuild();
+  updateWalkCamera(); updateWalkHud();
+}
+function exitWalk() {
+  if (!ui.walk) return;
+  ui.walk = false; keys.clear(); joy.x = joy.y = 0; lookDrag = null;
+  stage.classList.remove('walking');
+  $('#walkBtn').hidden = false; $('#walkBar').hidden = true;
+  camera.fov = orbitSaved.fov; camera.updateProjectionMatrix();
+  camera.position.copy(orbitSaved.pos); controls.target.copy(orbitSaved.target);
+  ui.mode = orbitSaved.mode;
+  $$('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.mode === ui.mode));
+  controls.enabled = true; controls.update();
+  rebuild(); clearHud();
+}
+// Keep the walker out of walls: push the body circle off any wall it overlaps.
+function collide(x, y) {
+  const fl = plan.floors[walker.f];
+  if (!ui.ghost) {
+    for (let it = 0; it < 3; it++) {
+      for (const w of wallsByFloor[walker.f] || []) {
+        const dx = w.x2 - w.x1, dy = w.y2 - w.y1, L = dx * dx + dy * dy;
+        const t = L ? clamp(((x - w.x1) * dx + (y - w.y1) * dy) / L, 0, 1) : 0;
+        const cx = w.x1 + t * dx, cy = w.y1 + t * dy;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < BODY_R && d > 1e-6) { x = cx + (x - cx) / d * BODY_R; y = cy + (y - cy) / d * BODY_R; }
+      }
+    }
+  }
+  return [clamp(x, 0.15, fl.width - 0.15), clamp(y, 0.15, fl.depth - 0.15)];
+}
+function stepWalk(dt) {
+  if (!walker) return;
+  let fwd = 0, side = 0, turn = 0;
+  if (keys.has('w') || keys.has('arrowup')) fwd += 1;
+  if (keys.has('s') || keys.has('arrowdown')) fwd -= 1;
+  if (keys.has('a')) side -= 1;
+  if (keys.has('d')) side += 1;
+  if (keys.has('arrowleft') || keys.has('q')) turn += 1;
+  if (keys.has('arrowright') || keys.has('e')) turn -= 1;
+  fwd -= joy.y; side += joy.x;
+  walker.yaw += turn * 1.9 * dt;
+  const len = Math.hypot(fwd, side);
+  if (len > 1) { fwd /= len; side /= len; }
+  if (len > 0.05) {
+    const speed = keys.has('shift') ? 3.2 : 1.5;
+    const fx = -Math.sin(walker.yaw), fy = -Math.cos(walker.yaw); // forward on the plan
+    const rx = -fy, ry = fx;                                     // right on the plan
+    const [nx, ny] = collide(walker.x + (fx * fwd + rx * side) * speed * dt, walker.y + (fy * fwd + ry * side) * speed * dt);
+    sinceTrail += Math.hypot(nx - walker.x, ny - walker.y);
+    walker.x = nx; walker.y = ny;
+    if (sinceTrail > 0.3) {
+      sinceTrail = 0;
+      trail.push({ x: walker.x, y: walker.y, f: walker.f, v: signalAt(walker.x, walker.y, walker.f).v });
+      if (trail.length > 2000) trail.shift();
+      buildTrail();
+    }
+  }
+  hudTimer += dt;
+  if (hudTimer > 0.12) { hudTimer = 0; updateWalkHud(); }
+}
+function updateWalkCamera() {
+  if (!walker) return;
+  const eye = toWorld(walker.x, walker.y, walker.f, EYE_H);
+  const fx = -Math.sin(walker.yaw), fz = -Math.cos(walker.yaw);
+  if (ui.cam === 'fp') {
+    camera.position.copy(eye);
+    camera.rotation.set(walker.pitch, walker.yaw, 0, 'YXZ');
+  } else {
+    camera.position.set(eye.x - fx * 3.6, eye.y + 2.0, eye.z - fz * 3.6);
+    camera.lookAt(eye.x + fx * 1.2, eye.y - 0.7, eye.z + fz * 1.2);
+  }
+  if (avatar) {
+    avatar.position.copy(toWorld(walker.x, walker.y, walker.f));
+    avatar.rotation.y = walker.yaw;
+    avatar.visible = ui.cam !== 'fp';
+  }
+}
+function updateWalkHud() {
+  if (!walker) return;
+  const fl = plan.floors[walker.f];
+  $('#hudWhere').textContent = `You · ${fl.name} · ${fmt(walker.x)}, ${fmt(walker.y)} m`;
+  if (!placedAps().length) { $('#hudDbm').innerHTML = '– <small>dBm</small>'; $('#hudQ span').textContent = 'Place a router to see your signal'; $('#hudSrc').textContent = ''; return; }
+  const s = signalAt(walker.x, walker.y, walker.f);
+  $('#hudDbm').innerHTML = `${Math.round(s.v)} <small>dBm here</small>`;
+  const q = setQ(s.v);
+  const d = s.detail || {};
+  $('#hudSrc').textContent = s.ap ? `${q[2]}. ${s.ap.name} is ${fmt(d.d)} m away, ${d.walls} wall${d.walls === 1 ? '' : 's'}${d.floors ? ` and ${d.floors} floor${d.floors > 1 ? 's' : ''}` : ''} in between.` : q[2];
+  if (avatar) {
+    const c = new THREE.Color(rssiCss(s.v));
+    avatar.userData.mat.color.copy(c); avatar.userData.mat.emissive.copy(c);
+    avatar.userData.halo.material.color.copy(c);
+  }
+}
+function walkFloor(delta) {
+  const f = walker.f + delta;
+  if (f < 0 || f >= plan.floors.length) { toast(delta > 0 ? 'You are on the top floor.' : 'You are on the lowest floor.'); return; }
+  const fl = plan.floors[f];
+  walker.f = f; ui.floor = f;
+  [walker.x, walker.y] = collide(clamp(walker.x, 0.4, fl.width - 0.4), clamp(walker.y, 0.4, fl.depth - 0.4));
+  rebuild(); updateWalkHud();
+  toast(`Now on ${fl.name}`);
+}
+$('#walkBtn').addEventListener('click', startWalk);
+$('#walkExit').addEventListener('click', exitWalk);
+$('#walkUp').addEventListener('click', () => walkFloor(1));
+$('#walkDown').addEventListener('click', () => walkFloor(-1));
+$('#ghostWalk').addEventListener('change', (e) => { ui.ghost = e.target.checked; });
+$('#trailClear').addEventListener('click', () => { trail = []; rebuild(); });
+$$('[data-cam]').forEach((b) => b.addEventListener('click', () => {
+  ui.cam = b.dataset.cam;
+  $$('[data-cam]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.cam === ui.cam));
+}));
+document.addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); if (e.key === 'Shift') keys.delete('shift'); });
+window.addEventListener('blur', () => keys.clear());
+(() => {
+  const pad = $('#joy'), knob = pad.querySelector('i');
+  let id = null;
+  const move = (e) => {
+    const r = pad.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const R = r.width / 2 - 12, L = Math.hypot(dx, dy);
+    if (L > R) { dx *= R / L; dy *= R / L; }
+    joy.x = dx / R; joy.y = dy / R;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const end = () => { id = null; joy.x = joy.y = 0; knob.style.transform = ''; };
+  pad.addEventListener('pointerdown', (e) => { id = e.pointerId; pad.setPointerCapture(id); move(e); e.preventDefault(); });
+  pad.addEventListener('pointermove', (e) => { if (e.pointerId === id) move(e); });
+  pad.addEventListener('pointerup', end);
+  pad.addEventListener('pointercancel', end);
+})();
+
 // ---------- Sidebar ----------
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function renderStats() {
@@ -1189,6 +1558,8 @@ function renderSidebar() {
   if (document.activeElement !== $('#floorD')) $('#floorD').value = fl.depth;
   if (document.activeElement !== $('#floorH')) $('#floorH').value = plan.floorHeight;
   $('#delFloor').disabled = plan.floors.length < 2;
+  $('#planImgDel').hidden = !fl.image;
+  $('#planImgBtn').textContent = fl.image ? 'Replace plan image' : 'Add floor plan image';
   // source
   if (ui.source !== 'best' && !placedAps().some((a) => a.id === ui.source)) ui.source = 'best';
   $('#sourceSel').innerHTML = `<option value="best">Strongest router at each spot</option>` + placedAps().map((a) => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
@@ -1226,12 +1597,13 @@ function renderSidebar() {
 
 // ---------- Wiring ----------
 function setTool(t) {
-  ui.tool = t; wallStart = null;
-  if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); wallPreview = null; }
+  ui.tool = t; wallStart = null; roomStart = null;
+  if (world) clearPreview();
+  floorViews.forEach((fv) => { fv.heat.material.opacity = heatOpacity(fv.f); });
   hidePop();
   $$('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === t));
   view.className = 'tool-' + t;
-  $('#wallMatRow').hidden = t !== 'wall';
+  $('#wallMatRow').hidden = t !== 'wall' && t !== 'room';
   setHint();
 }
 function setHint(text) {
@@ -1239,6 +1611,8 @@ function setHint(text) {
   const hints = {
     view: 'Drag to orbit · scroll to zoom · drag a router to move it',
     wall: `Click two points on ${fname} to draw a wall · walls chain · Esc to stop`,
+    room: `Click two opposite corners on ${fname} to add a room`,
+    door: `Click on a wall on ${fname} to cut a 0.9 m doorway`,
     router: `Click on ${fname} to place a router`,
     reading: `Click where you stood on ${fname}, then type the dBm your device showed`,
     erase: `Click a wall, router or reading on ${fname} to delete it`,
@@ -1262,8 +1636,45 @@ $('#wallMat').value = ui.wallMat;
 $('#wallMat').addEventListener('change', (e) => { ui.wallMat = e.target.value; });
 $('#floorSel').addEventListener('change', (e) => { ui.floor = +e.target.value; wallStart = null; renderSidebar(); setHint(); });
 $('#floorName').addEventListener('change', (e) => { const v = e.target.value.trim(); if (v) mutate(() => { plan.floors[ui.floor].name = v; }); });
-$('#floorW').addEventListener('change', (e) => { const v = clamp(+e.target.value || 10, 2, 80); mutate(() => { plan.floors[ui.floor].width = v; }); fitCamera(); });
-$('#floorD').addEventListener('change', (e) => { const v = clamp(+e.target.value || 8, 2, 80); mutate(() => { plan.floors[ui.floor].depth = v; }); fitCamera(); });
+$('#floorW').addEventListener('change', (e) => {
+  const v = clamp(+e.target.value || 10, 2, 80);
+  mutate(() => { const fl = plan.floors[ui.floor]; fl.width = v; if (fl.image && fl.imageAspect) fl.depth = clamp(Math.round(v * fl.imageAspect * 10) / 10, 2, 80); });
+  fitCamera();
+});
+$('#floorD').addEventListener('change', (e) => {
+  const v = clamp(+e.target.value || 8, 2, 80);
+  mutate(() => { const fl = plan.floors[ui.floor]; fl.depth = v; if (fl.image && fl.imageAspect) fl.width = clamp(Math.round(v / fl.imageAspect * 10) / 10, 2, 80); });
+  fitCamera();
+});
+$('#planImgBtn').addEventListener('click', () => $('#planImgIn').click());
+$('#planImgIn').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const fr = new FileReader();
+  fr.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      // Shrink big photos so the plan still fits in browser storage.
+      const k = Math.min(1, 1400 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL('image/jpeg', 0.82);
+      const aspect = c.height / c.width;
+      mutate(() => { const fl = plan.floors[ui.floor]; fl.image = url; fl.imageAspect = aspect; fl.depth = clamp(Math.round(fl.width * aspect * 10) / 10, 2, 80); });
+      fitCamera(); setTool('wall');
+      toast(`Plan added to ${plan.floors[ui.floor].name}. Set its real width under Floors, then trace the walls.`);
+    };
+    img.onerror = () => toast('That file could not be opened as an image.');
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+});
+$('#planImgDel').addEventListener('click', () => {
+  mutate(() => { const fl = plan.floors[ui.floor]; delete fl.image; delete fl.imageAspect; });
+  toast('Plan image removed', { label: 'Undo', run: undo });
+});
 $('#floorH').addEventListener('change', (e) => { const v = clamp(+e.target.value || 2.7, 2, 6); mutate(() => { plan.floorHeight = v; }); });
 $('#addFloor').addEventListener('click', () => {
   const last = plan.floors[plan.floors.length - 1];
@@ -1350,7 +1761,7 @@ function applyData(obj, label) {
     });
   }
   undoStack.push(JSON.stringify(plan));
-  plan = normalize(obj); isExample = false; suggestion = null; ui.floor = 0; ui.source = 'best';
+  plan = normalize(obj); isExample = false; suggestion = null; ui.floor = 0; ui.source = 'best'; trail = []; walker = null;
   save(); rebuild({ fit: true });
   toast(`Loaded ${label || plan.name}: ${plan.samples.length} readings, ${plan.aps.length} router${plan.aps.length === 1 ? '' : 's'}.`);
 }
@@ -1384,20 +1795,24 @@ $('#dataCopy').addEventListener('click', () => {
 });
 $('#exampleBtn').addEventListener('click', () => {
   undoStack.push(JSON.stringify(plan));
+  trail = []; walker = null;
   plan = normalize(EXAMPLE); isExample = true; suggestion = null; ui.floor = 0; ui.source = 'best'; save(); rebuild({ fit: true });
   toast('Loaded the example home', { label: 'Undo', run: undo });
 });
 $('#clearBtn').addEventListener('click', () => {
   undoStack.push(JSON.stringify(plan));
-  plan = normalize({ name: 'My home', floors: [{ name: 'Ground floor', width: 10, depth: 8 }] }); isExample = false; suggestion = null; ui.floor = 0;
+  plan = normalize({ name: 'My home', floors: [{ name: 'Ground floor', width: 10, depth: 8 }] }); isExample = false; suggestion = null; ui.floor = 0; trail = []; walker = null;
   save(); rebuild({ fit: true }); setTool('wall');
   toast('Blank floor ready. Set its size under Floors, then draw your walls.', { label: 'Undo', run: undo });
 });
 document.addEventListener('keydown', (e) => {
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName);
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
+  if (ui.walk && !typing && MOVE_KEYS.has(e.key.toLowerCase())) { keys.add(e.key.toLowerCase()); e.preventDefault(); }
   if (e.key === 'Escape') {
     if (!$('#dataDlg').hidden) { $('#dataDlg').hidden = true; return; }
+    if (ui.walk) { exitWalk(); return; }
+    if (roomStart) { roomStart = null; clearPreview(); setHint(); }
     hidePop();
     if (wallStart) { wallStart = null; if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); wallPreview = null; } setHint(); }
   }
@@ -1423,10 +1838,11 @@ if (ok) {
   el.addEventListener('pointerdown', onDown);
   el.addEventListener('pointermove', onMove);
   el.addEventListener('pointerup', onUp);
-  el.addEventListener('pointerleave', () => { if (!dragAp) clearHud(); });
+  el.addEventListener('pointerleave', () => { if (!dragAp && !ui.walk) clearHud(); });
 }
 rebuild({ fit: true });
 setTool('view');
+if (!ok) $('#walkBtn').hidden = true;
 const mq = window.matchMedia('(prefers-color-scheme: dark)');
 mq.addEventListener && mq.addEventListener('change', readTokens);
 new MutationObserver(readTokens).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -1434,8 +1850,9 @@ new MutationObserver(readTokens).observe(document.documentElement, { attributes:
 if (ok) {
   const clock = new THREE.Clock();
   const loop = () => {
-    const t = clock.getElapsedTime();
-    controls.update();
+    const dt = Math.min(clock.getDelta(), 0.1);
+    const t = clock.elapsedTime;
+    if (ui.walk) { stepWalk(dt); updateWalkCamera(); } else controls.update();
     for (const m of apMeshes) {
       for (const ring of m.userData.rings) {
         const ph = reduceMotion ? ring.userData.phase : (t * 0.35 + ring.userData.phase) % 1;
