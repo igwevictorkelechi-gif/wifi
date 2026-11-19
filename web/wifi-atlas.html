@@ -1,0 +1,1455 @@
+<title>WiFi Signal Atlas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: an instrument sidebar on the left, a full-bleed 3D survey stage on the right (stacked on phones). */
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --ink: #121827;
+  --muted: #5b6478;
+  --line: #d9dee8;
+  --chip: #eef1f8;
+  --accent: #2f55d4;
+  --accent-ink: #ffffff;
+  --scene: #e4e8f0;
+  --scene-grid: #b4bdcf;
+  --wall: #6f7a90;
+  --danger: #c4323a;
+  --shadow: 0 6px 24px rgba(18, 24, 39, .12);
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0e18; --panel: #111726; --ink: #e7eaf3; --muted: #98a1b6; --line: #232b3d; --chip: #1a2133;
+    --accent: #7b96ff; --accent-ink: #0a0e18; --scene: #0c1220; --scene-grid: #2b3652; --wall: #a3aecb;
+    --danger: #ff6b72; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0e18; --panel: #111726; --ink: #e7eaf3; --muted: #98a1b6; --line: #232b3d; --chip: #1a2133;
+  --accent: #7b96ff; --accent-ink: #0a0e18; --scene: #0c1220; --scene-grid: #2b3652; --wall: #a3aecb;
+  --danger: #ff6b72; --shadow: 0 6px 24px rgba(0, 0, 0, .45); color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  overflow: hidden;
+}
+.app { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+.panel {
+  background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; min-width: 0;
+  padding-block: 18px 28px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+.brand h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.brand .example { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+section.block { display: flex; flex-direction: column; gap: 10px; }
+.block h2 { margin: 0; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > label { color: var(--muted); font-size: 12.5px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.field span { font-size: 11.5px; color: var(--muted); }
+input[type="text"], input[type="number"], select, textarea {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 8px; min-width: 0; width: 100%;
+}
+input[type="number"] { font-family: var(--font-mono); font-size: 13px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+button {
+  font: inherit; font-weight: 500; font-size: 13px; color: var(--ink); background: var(--chip); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.ghost { background: transparent; }
+button.danger { color: var(--danger); }
+.seg { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg.two { grid-template-columns: 1fr 1fr; }
+.seg button { border: 0; border-radius: 0; background: transparent; padding: 8px 4px; font-size: 12.5px; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--ink); }
+.toggle input { accent-color: var(--accent); }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.stat b { display: block; font-family: var(--font-mono); font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 11.5px; color: var(--muted); }
+.floorbars { display: flex; flex-direction: column; gap: 6px; }
+.fbar { display: grid; grid-template-columns: 92px 1fr 44px; gap: 8px; align-items: center; font-size: 12.5px; }
+.fbar .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fbar .track { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; display: flex; }
+.fbar .track i { display: block; height: 100%; }
+.fbar .pct { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.item { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.item .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.item .dot.est { background: transparent; border: 2px dashed var(--accent); }
+.item .meta { min-width: 0; }
+.item .meta input { padding: 2px 4px; border-color: transparent; background: transparent; font-weight: 600; }
+.item .meta input:hover { border-color: var(--line); }
+.item .meta small { display: block; color: var(--muted); font-size: 11.5px; padding-left: 5px; font-family: var(--font-mono); }
+.item .acts { display: flex; gap: 4px; }
+.item .acts button { padding: 3px 7px; font-size: 12px; }
+.empty { color: var(--muted); font-size: 12.5px; padding: 6px 0; }
+
+.stage { position: relative; min-width: 0; overflow: hidden; background: var(--scene); }
+#view { position: absolute; inset: 0; touch-action: none; }
+#view canvas { display: block; }
+#view.tool-wall, #view.tool-router, #view.tool-reading { cursor: crosshair; }
+#view.tool-erase { cursor: not-allowed; }
+#view.dragging { cursor: grabbing; }
+.hud {
+  position: absolute; top: 12px; left: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 10px 12px; min-width: 210px; max-width: calc(100% - 24px); pointer-events: none;
+}
+.hud .where { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+.hud .dbm { font-family: var(--font-mono); font-size: 28px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hud .dbm small { font-size: 14px; color: var(--muted); font-weight: 400; }
+.hud .q { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+.hud .q i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.hud .src { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.toolhint {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 99px; padding: 6px 14px; font-size: 12.5px; box-shadow: var(--shadow); max-width: calc(100% - 24px); text-align: center;
+  pointer-events: none;
+}
+.legend {
+  position: absolute; top: 12px; right: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 10px 10px 12px; box-shadow: var(--shadow); display: grid; grid-template-columns: 12px auto; gap: 8px; pointer-events: none;
+}
+.legend .bar { width: 12px; height: 170px; border-radius: 3px; }
+.legend .ticks { position: relative; height: 170px; width: 92px; font-size: 11px; }
+.legend .ticks div { position: absolute; left: 0; transform: translateY(-50%); white-space: nowrap; }
+.legend .ticks b { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.legend .ticks span { color: var(--muted); }
+.legend .unit { grid-column: 1 / -1; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl {
+  position: absolute; transform: translate(-50%, -100%); font-size: 11.5px; font-weight: 600; white-space: nowrap; padding: 2px 7px;
+  border-radius: 99px; background: var(--panel); border: 1px solid var(--line); color: var(--ink);
+}
+.lbl.floor { background: transparent; border: 0; color: var(--muted); font-family: var(--font-display); letter-spacing: .06em; text-transform: uppercase; font-size: 11px; transform: translate(0, -50%); }
+.lbl.ghost { border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.pop {
+  position: absolute; z-index: 5; width: 230px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.pop h3 { margin: 0; font-family: var(--font-display); font-size: 14px; }
+.toast {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 6; background: var(--ink); color: var(--bg);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow);
+  max-width: calc(100% - 24px);
+}
+.toast button { background: var(--bg); color: var(--ink); border: 0; padding: 4px 9px; }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+.overlay { position: fixed; inset: 0; z-index: 20; background: rgba(10, 14, 24, .55); display: grid; place-items: center; padding: 16px; }
+.dlg { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; width: min(720px, 100%); max-height: 90%; display: flex; flex-direction: column; gap: 10px; padding: 16px; box-shadow: var(--shadow); }
+.dlg h3 { margin: 0; font-family: var(--font-display); font-size: 17px; }
+.dlg textarea { font-family: var(--font-mono); font-size: 12px; flex: 1; min-height: 300px; resize: vertical; }
+.dlg .err { color: var(--danger); font-size: 12.5px; min-height: 1em; }
+.drop { outline: 3px dashed var(--accent); outline-offset: -10px; }
+kbd { font-family: var(--font-mono); font-size: 11px; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+@media (max-width: 820px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: 60vh auto; height: auto; }
+  .stage { order: -1; height: 60vh; }
+  .panel { border-right: 0; border-top: 1px solid var(--line); overflow: visible; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .legend { top: auto; bottom: 52px; padding: 8px; }
+  .legend .bar, .legend .ticks { height: 110px; }
+  .legend .ticks { width: 44px; }
+  .legend .ticks span { display: none; }
+  .hud { min-width: 0; padding: 8px 10px; }
+  .hud .dbm { font-size: 22px; }
+  .toolhint { left: 12px; transform: none; max-width: calc(100% - 100px); text-align: left; border-radius: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="panel" aria-label="Controls">
+    <header class="brand">
+      <h1>WiFi Signal Atlas</h1>
+      <p><span id="planName">Example home</span><span class="example" id="exampleBadge">Example data</span></p>
+    </header>
+
+    <section class="block" aria-labelledby="h-tools">
+      <h2 id="h-tools">Tool</h2>
+      <div class="seg" role="group" aria-label="Tool">
+        <button id="tool-view" data-tool="view" aria-pressed="true">View</button>
+        <button id="tool-wall" data-tool="wall" aria-pressed="false">Wall</button>
+        <button id="tool-router" data-tool="router" aria-pressed="false">Router</button>
+        <button id="tool-reading" data-tool="reading" aria-pressed="false">Reading</button>
+        <button id="tool-erase" data-tool="erase" aria-pressed="false">Erase</button>
+      </div>
+      <div class="row" id="wallMatRow" hidden>
+        <label for="wallMat">Wall type</label>
+        <select id="wallMat" style="width:auto;flex:1"></select>
+      </div>
+      <p class="hint">Edits go on the active floor. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes.</p>
+    </section>
+
+    <section class="block" aria-labelledby="h-floors">
+      <h2 id="h-floors">Floors</h2>
+      <div class="row">
+        <select id="floorSel" style="flex:1;width:auto" aria-label="Active floor"></select>
+        <button id="addFloor">Add floor</button>
+        <button id="delFloor" class="ghost danger" title="Remove active floor">Remove</button>
+      </div>
+      <div class="grid2">
+        <label class="field"><span>Name</span><input id="floorName" type="text"></label>
+        <label class="field"><span>Ceiling height (m)</span><input id="floorH" type="number" min="2" max="6" step="0.1"></label>
+        <label class="field"><span>Width (m)</span><input id="floorW" type="number" min="2" max="80" step="0.5"></label>
+        <label class="field"><span>Depth (m)</span><input id="floorD" type="number" min="2" max="80" step="0.5"></label>
+      </div>
+      <label class="field"><span>Floor separation in 3D: <b id="explodeVal">2.4 m</b></span><input id="explode" type="range" min="0" max="6" step="0.1" value="2.4"></label>
+    </section>
+
+    <section class="block" aria-labelledby="h-display">
+      <h2 id="h-display">Display</h2>
+      <div class="seg two" role="group" aria-label="View mode">
+        <button id="mode-heat" data-mode="heat" aria-pressed="true">Heatmap</button>
+        <button id="mode-terrain" data-mode="terrain" aria-pressed="false">Signal terrain</button>
+      </div>
+      <label class="field"><span>Show signal from</span><select id="sourceSel"></select></label>
+      <div class="row" style="gap:14px">
+        <label class="toggle"><input type="checkbox" id="showWalls" checked> Walls</label>
+        <label class="toggle"><input type="checkbox" id="showReadings" checked> Readings</label>
+        <label class="toggle"><input type="checkbox" id="showGrid" checked> Grid</label>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-cov">
+      <h2 id="h-cov">Coverage</h2>
+      <div class="stats">
+        <div class="stat"><b id="covPct">–</b><span>Good (≥ −67)</span></div>
+        <div class="stat"><b id="weakPct">–</b><span>Weak</span></div>
+        <div class="stat"><b id="deadPct">–</b><span>Dead (&lt; −80)</span></div>
+      </div>
+      <div class="floorbars" id="floorBars"></div>
+      <p class="hint">−67 dBm is the usual floor for smooth video calls and streaming.</p>
+    </section>
+
+    <section class="block" aria-labelledby="h-aps">
+      <h2 id="h-aps">Routers &amp; access points</h2>
+      <div class="list" id="apList"></div>
+      <div id="otherWrap" class="block" style="gap:6px">
+        <p class="hint" style="font-weight:600">Other networks in your readings</p>
+        <div class="list" id="otherList"></div>
+      </div>
+    </section>
+
+    <section class="block" aria-labelledby="h-model">
+      <h2 id="h-model">Radio model</h2>
+      <div class="seg two" role="group" aria-label="Band">
+        <button id="band-24" data-band="2.4" aria-pressed="true">2.4 GHz</button>
+        <button id="band-5" data-band="5" aria-pressed="false">5 GHz</button>
+      </div>
+      <label class="field"><span>Path-loss exponent: <b id="nVal">2.0</b></span><input id="nExp" type="range" min="1.6" max="3.5" step="0.1" value="2"></label>
+      <p class="hint">The map blends a multi-wall propagation model with your measured readings. Each reading pulls the map toward what you actually measured nearby.</p>
+    </section>
+
+    <section class="block" aria-labelledby="h-data">
+      <h2 id="h-data">Your data</h2>
+      <div class="row">
+        <button id="loadBtn" class="primary">Load survey file</button>
+        <button id="editBtn">View / paste JSON</button>
+      </div>
+      <div class="row">
+        <button id="exampleBtn" class="ghost">Load example</button>
+        <button id="clearBtn" class="ghost danger">Start blank</button>
+      </div>
+      <input type="file" id="fileIn" accept=".json,application/json" hidden>
+      <p class="hint">Run <b>wifi_survey.py</b> on a laptop as you walk around, then load the file here. Or type readings from a phone WiFi analyzer app with the Reading tool. You can also drop a file on the 3D view.</p>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div id="view" class="tool-view"></div>
+    <div id="labels"></div>
+    <div class="hud" id="hud">
+      <div class="where" id="hudWhere">Hover over a floor</div>
+      <div class="dbm" id="hudDbm">– <small>dBm</small></div>
+      <div class="q" id="hudQ"><i></i><span></span></div>
+      <div class="src" id="hudSrc"></div>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <div class="bar" id="legendBar"></div>
+      <div class="ticks" id="legendTicks"></div>
+    </div>
+    <div class="toolhint" id="toolHint">Drag to orbit · scroll to zoom · drag a router to move it</div>
+    <form class="pop" id="pop" hidden>
+      <h3>Add reading</h3>
+      <label class="field"><span>Signal (dBm)</span><input id="popDbm" type="number" min="-100" max="-10" step="1" value="-60" required></label>
+      <label class="field"><span>Network</span><select id="popAp"></select></label>
+      <label class="field"><span>Label (optional)</span><input id="popLabel" type="text" placeholder="e.g. Desk"></label>
+      <div class="row"><button type="submit" class="primary">Save reading</button><button type="button" id="popCancel" class="ghost">Cancel</button></div>
+    </form>
+    <div class="toast" id="toast" hidden><span id="toastMsg"></span><button id="toastAct" hidden></button></div>
+  </main>
+</div>
+
+<div class="overlay" id="dataDlg" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle">Survey data (JSON)</h3>
+    <p class="hint">This is everything on the map. Copy it to keep a backup, or paste a survey file here and apply it.</p>
+    <textarea id="dataText" spellcheck="false"></textarea>
+    <div class="err" id="dataErr"></div>
+    <div class="row">
+      <button id="dataApply" class="primary">Apply</button>
+      <button id="dataCopy">Copy</button>
+      <button id="dataClose" class="ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+// ---------- Radio constants ----------
+const MATERIALS = {
+  drywall:  { label: 'Drywall / plaster', loss: 3,  thick: 0.10 },
+  wood:     { label: 'Wood / door',       loss: 4,  thick: 0.06 },
+  glass:    { label: 'Glass / window',    loss: 2,  thick: 0.04 },
+  brick:    { label: 'Brick',             loss: 8,  thick: 0.22 },
+  concrete: { label: 'Concrete',          loss: 12, thick: 0.25 },
+  metal:    { label: 'Metal (fridge, cabinet)', loss: 20, thick: 0.06 },
+};
+const FLOOR_LOSS = 15;       // dB per floor slab at 2.4 GHz
+const RES = 0.25;            // heatmap grid step (m)
+const AP_H = 1.6;            // router height above its floor (m)
+const RX_H = 1.0;            // device height above floor (m)
+const GOOD = -67, DEAD = -80;
+const STOPS = [ // dBm → colour
+  [-35, [31, 182, 143]], [-50, [92, 201, 92]], [-60, [184, 214, 72]], [-67, [242, 201, 76]],
+  [-75, [242, 140, 64]], [-82, [222, 69, 76]], [-92, [104, 38, 66]],
+];
+const QUAL = [
+  [-50, 'Excellent', 'Anything works, even 4K and large downloads'],
+  [-60, 'Good', 'Video calls and streaming are smooth'],
+  [-67, 'Fair', 'Streaming OK; this is the reliable minimum'],
+  [-75, 'Weak', 'Browsing works; calls may stutter'],
+  [-82, 'Poor', 'Slow and drops out'],
+  [-999, 'No usable signal', 'Dead zone'],
+];
+const rssiRGB = (v) => {
+  if (v >= STOPS[0][0]) return STOPS[0][1];
+  for (let i = 1; i < STOPS.length; i++) {
+    const [b, cb] = STOPS[i];
+    if (v >= b) {
+      const [a, ca] = STOPS[i - 1];
+      const t = (v - b) / (a - b);
+      return [cb[0] + (ca[0] - cb[0]) * t, cb[1] + (ca[1] - cb[1]) * t, cb[2] + (ca[2] - cb[2]) * t];
+    }
+  }
+  return STOPS[STOPS.length - 1][1];
+};
+const rssiCss = (v) => { const c = rssiRGB(v); return `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`; };
+const quality = (v) => QUAL.find((q) => v >= q[0]);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const fmt = (v, d = 1) => Number(v).toFixed(d);
+const norm = (k) => String(k).trim().toLowerCase();
+
+// ---------- Example survey (clearly marked as example) ----------
+const EXAMPLE = {
+  version: 1, name: 'Example home', floorHeight: 2.7, model: { band: '2.4', n: 2.0 },
+  floors: [{ name: 'Ground floor', width: 11, depth: 8 }, { name: 'Upstairs', width: 11, depth: 8 }],
+  walls: [
+    // ground floor shell
+    [0, 0, 0, 11, 0, 'brick'], [0, 11, 0, 11, 8, 'brick'], [0, 11, 8, 0, 8, 'brick'], [0, 0, 8, 0, 0, 'brick'],
+    [0, 3.5, 0, 6.5, 0, 'glass'],
+    [0, 6, 0, 6, 3.4, 'drywall'], [0, 6, 4.4, 6, 8, 'drywall'],
+    [0, 0, 5.2, 4.4, 5.2, 'drywall'], [0, 5.4, 5.2, 6, 5.2, 'drywall'],
+    [0, 6, 4.6, 8.4, 4.6, 'brick'], [0, 9.4, 4.6, 11, 4.6, 'brick'],
+    [0, 8.6, 4.6, 8.6, 8, 'drywall'],
+    [0, 10.3, 0.5, 10.3, 1.6, 'metal'],
+    // upstairs
+    [1, 0, 0, 11, 0, 'brick'], [1, 11, 0, 11, 8, 'brick'], [1, 11, 8, 0, 8, 'brick'], [1, 0, 8, 0, 0, 'brick'],
+    [1, 5.5, 0, 5.5, 3.4, 'drywall'], [1, 5.5, 4.4, 5.5, 8, 'drywall'],
+    [1, 0, 4, 2.4, 4, 'drywall'], [1, 3.4, 4, 5.5, 4, 'drywall'],
+    [1, 5.5, 5, 7, 5, 'drywall'], [1, 8, 5, 11, 5, 'drywall'],
+    [1, 8, 5, 8, 8, 'drywall'],
+  ].map(([floor, x1, y1, x2, y2, material]) => ({ floor, x1, y1, x2, y2, material })),
+  aps: [{ id: 'router', name: 'Main router', bssid: 'a4:2b:b0:11:22:33', ssid: 'HomeNet', floor: 0, x: 1.0, y: 1.2, p0: -38 }],
+  networks: {
+    'a4:2b:b0:11:22:33': { ssid: 'HomeNet', channel: 6, band: '2.4' },
+    'f0:9f:c2:aa:bb:cc': { ssid: 'Neighbour-5G', channel: 44, band: '5' },
+  },
+  samples: [
+    [0, 2.2, 2.0, 'Sofa', -43, -88], [0, 4.6, 3.0, 'TV', -50, -86], [0, 2.5, 6.6, 'Study desk', -63, -84],
+    [0, 8.0, 2.0, 'Kitchen', -64, -80], [0, 10.0, 3.2, 'Fridge corner', -77, -77], [0, 7.2, 6.4, 'Hallway', -67, -80],
+    [0, 9.8, 6.8, 'Bathroom', -79, -76],
+    [1, 1.6, 1.6, 'Bedroom 1', -61, -86], [1, 3.2, 2.6, 'Landing', -64, null], [1, 2.5, 6.2, 'Bedroom 2', -72, -83],
+    [1, 8.2, 2.2, 'Office', -78, -78], [1, 9.6, 6.8, 'Guest room', -86, -74],
+  ].map(([floor, x, y, label, a, b]) => {
+    const readings = { 'a4:2b:b0:11:22:33': a };
+    if (b != null) readings['f0:9f:c2:aa:bb:cc'] = b;
+    return { floor, x, y, label, readings };
+  }),
+};
+
+// ---------- State ----------
+const STORE_KEY = 'wifi-atlas.plan.v1';
+let plan = null;
+let isExample = true;
+const ui = { tool: 'view', floor: 0, mode: 'heat', source: 'best', walls: true, readings: true, grid: true, explode: 2.4, wallMat: 'drywall' };
+const undoStack = [];
+let suggestion = null; // {apId, x, y, floor, before, after}
+
+function normalize(p) {
+  const out = {
+    version: 1,
+    name: typeof p.name === 'string' && p.name ? p.name : 'My home',
+    floorHeight: clamp(+p.floorHeight || 2.7, 2, 6),
+    model: { band: p.model && p.model.band === '5' ? '5' : '2.4', n: clamp(+(p.model && p.model.n) || 2.0, 1.6, 3.5) },
+    floors: Array.isArray(p.floors) && p.floors.length ? p.floors.map((f, i) => ({
+      name: f.name || `Floor ${i + 1}`, width: clamp(+f.width || 10, 2, 80), depth: clamp(+f.depth || 8, 2, 80),
+    })) : [{ name: 'Ground floor', width: 10, depth: 8 }],
+    walls: [], aps: [], samples: [], networks: {},
+  };
+  const nf = out.floors.length;
+  const okF = (f) => Number.isInteger(+f) && +f >= 0 && +f < nf;
+  (p.walls || []).forEach((w) => {
+    if (!okF(w.floor ?? 0)) return;
+    const vals = [w.x1, w.y1, w.x2, w.y2].map(Number);
+    if (vals.some((v) => !isFinite(v))) return;
+    out.walls.push({ floor: +(w.floor ?? 0), x1: vals[0], y1: vals[1], x2: vals[2], y2: vals[3], material: MATERIALS[w.material] ? w.material : 'drywall' });
+  });
+  Object.entries(p.networks || {}).forEach(([k, v]) => { out.networks[norm(k)] = { ssid: v && v.ssid || '', channel: v && v.channel || null, band: v && v.band || null }; });
+  (p.aps || []).forEach((a, i) => {
+    const ap = {
+      id: String(a.id || `ap${i + 1}`), name: a.name || a.ssid || `Router ${i + 1}`, bssid: a.bssid ? norm(a.bssid) : '',
+      ssid: a.ssid || '', floor: okF(a.floor ?? 0) ? +(a.floor ?? 0) : 0, x: +a.x, y: +a.y, p0: isFinite(+a.p0) && a.p0 != null ? +a.p0 : -38,
+      estimated: !!a.estimated,
+    };
+    if (!isFinite(ap.x) || !isFinite(ap.y)) { ap.x = NaN; ap.y = NaN; }
+    out.aps.push(ap);
+  });
+  (p.samples || []).forEach((s) => {
+    if (!okF(s.floor ?? 0) || !isFinite(+s.x) || !isFinite(+s.y)) return;
+    const readings = {};
+    Object.entries(s.readings || {}).forEach(([k, v]) => { if (isFinite(+v)) readings[norm(k)] = +v; });
+    if (isFinite(+s.rssi) && !Object.keys(readings).length && out.aps[0]) readings[out.aps[0].bssid || norm(out.aps[0].id)] = +s.rssi;
+    out.samples.push({ floor: +(s.floor ?? 0), x: +s.x, y: +s.y, label: s.label || '', readings });
+  });
+  return out;
+}
+const apKey = (ap) => ap.bssid || norm(ap.id);
+const readingFor = (s, ap) => {
+  const v = s.readings[apKey(ap)];
+  return v != null ? v : s.readings[norm(ap.id)];
+};
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ plan, isExample })); } catch (e) { /* storage unavailable */ }
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) { const o = JSON.parse(raw); plan = normalize(o.plan); isExample = !!o.isExample; return; }
+  } catch (e) { /* ignore */ }
+  plan = normalize(EXAMPLE); isExample = true;
+}
+function mutate(fn, opts = {}) {
+  undoStack.push(JSON.stringify(plan));
+  if (undoStack.length > 60) undoStack.shift();
+  fn();
+  if (!opts.keepExample) isExample = false;
+  suggestion = null;
+  save();
+  rebuild();
+}
+function undo() {
+  const prev = undoStack.pop();
+  if (!prev) { toast('Nothing to undo'); return; }
+  plan = normalize(JSON.parse(prev));
+  suggestion = null; save(); rebuild(); toast('Undone');
+}
+
+// ---------- Geometry helpers ----------
+function segCross(ax, ay, bx, by, cx, cy, dx, dy) {
+  const rx = bx - ax, ry = by - ay, sx = dx - cx, sy = dy - cy;
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return false;
+  const qx = cx - ax, qy = cy - ay;
+  const t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den;
+  return t > 1e-6 && t < 1 - 1e-6 && u >= 0 && u <= 1;
+}
+function distSeg(px, py, w) {
+  const dx = w.x2 - w.x1, dy = w.y2 - w.y1, L = dx * dx + dy * dy;
+  const t = L ? clamp(((px - w.x1) * dx + (py - w.y1) * dy) / L, 0, 1) : 0;
+  return Math.hypot(px - (w.x1 + t * dx), py - (w.y1 + t * dy));
+}
+
+// ---------- Propagation model ----------
+let wallsByFloor = [];
+function prepWalls() { wallsByFloor = plan.floors.map((_, f) => plan.walls.filter((w) => w.floor === f)); }
+function rawPredict(ap, x, y, f, detail) {
+  const five = plan.model.band === '5';
+  const H = plan.floorHeight;
+  const dz = (f - ap.floor) * H + (RX_H - AP_H);
+  const d = Math.max(Math.hypot(x - ap.x, y - ap.y, dz), 0.5);
+  let loss = 10 * plan.model.n * Math.log10(d);
+  const wm = five ? 1.45 : 1;
+  let wallsHit = 0;
+  const floorsToCheck = f === ap.floor ? [f] : [f, ap.floor];
+  const weight = f === ap.floor ? 1 : 0.5;
+  for (const ff of floorsToCheck) {
+    for (const w of wallsByFloor[ff] || []) {
+      if (segCross(ap.x, ap.y, x, y, w.x1, w.y1, w.x2, w.y2)) { loss += MATERIALS[w.material].loss * wm * weight; wallsHit++; }
+    }
+  }
+  loss += FLOOR_LOSS * (five ? 1.3 : 1) * Math.abs(f - ap.floor);
+  if (detail) { detail.d = d; detail.walls = wallsHit; detail.floors = Math.abs(f - ap.floor); }
+  return ap.p0 - (five ? 6 : 0) - loss;
+}
+function calibrate(ap) {
+  const pts = [];
+  for (const s of plan.samples) {
+    const m = readingFor(s, ap);
+    if (m != null) pts.push({ s, m, r: m - rawPredict(ap, s.x, s.y, s.floor) });
+  }
+  if (!pts.length) return { off: 0, res: [], n: 0 };
+  const off = clamp(pts.reduce((a, p) => a + p.r, 0) / pts.length, -20, 20);
+  return { off, n: pts.length, res: pts.map((p) => ({ x: p.s.x, y: p.s.y, f: p.s.floor, r: p.r - off })) };
+}
+function predict(ap, cal, x, y, f, detail) {
+  let v = rawPredict(ap, x, y, f, detail) + cal.off;
+  let num = 0, den = 0.35;
+  for (const p of cal.res) {
+    if (p.f !== f) continue;
+    const d2 = (x - p.x) ** 2 + (y - p.y) ** 2;
+    if (d2 > 30) continue;
+    const w = 1 / (d2 + 0.12);
+    num += w * p.r; den += w;
+  }
+  return v + num / den;
+}
+const placedAps = () => plan.aps.filter((a) => isFinite(a.x) && isFinite(a.y));
+let cals = new Map();
+let fields = [];
+function computeField() {
+  prepWalls();
+  cals = new Map(placedAps().map((ap) => [ap.id, calibrate(ap)]));
+  const aps = placedAps().filter((ap) => ui.source === 'best' || ap.id === ui.source);
+  fields = plan.floors.map((fl, f) => {
+    const nx = Math.round(fl.width / RES) + 1, ny = Math.round(fl.depth / RES) + 1;
+    const vals = new Float32Array(nx * ny), who = new Int16Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      const y = (j / (ny - 1)) * fl.depth;
+      for (let i = 0; i < nx; i++) {
+        const x = (i / (nx - 1)) * fl.width;
+        let best = -120, bi = -1;
+        for (let k = 0; k < aps.length; k++) {
+          const v = predict(aps[k], cals.get(aps[k].id), x, y, f);
+          if (v > best) { best = v; bi = k; }
+        }
+        vals[j * nx + i] = best; who[j * nx + i] = bi;
+      }
+    }
+    return { nx, ny, vals, who, aps };
+  });
+}
+function signalAt(x, y, f) {
+  const aps = placedAps().filter((ap) => ui.source === 'best' || ap.id === ui.source);
+  let best = { v: -120, ap: null, detail: null };
+  for (const ap of aps) {
+    const detail = {};
+    const v = predict(ap, cals.get(ap.id) || { off: 0, res: [] }, x, y, f, detail);
+    if (v > best.v) best = { v, ap, detail };
+  }
+  return best;
+}
+function coverageStats() {
+  return fields.map((fd) => {
+    let g = 0, w = 0, d = 0;
+    for (const v of fd.vals) { if (v >= GOOD) g++; else if (v >= DEAD) w++; else d++; }
+    const n = fd.vals.length || 1;
+    return { good: g / n, weak: w / n, dead: d / n, n };
+  });
+}
+
+// Estimate where an unplaced network's router is, from the readings that saw it.
+function locate(key) {
+  prepWalls();
+  const pts = plan.samples.filter((s) => s.readings[key] != null);
+  if (pts.length < 3) return null;
+  const probe = { floor: 0, x: 0, y: 0, p0: 0 };
+  let best = null;
+  plan.floors.forEach((fl, f) => {
+    for (let x = 0.25; x <= fl.width; x += 0.5) {
+      for (let y = 0.25; y <= fl.depth; y += 0.5) {
+        probe.floor = f; probe.x = x; probe.y = y;
+        const v = pts.map((s) => s.readings[key] - rawPredict(probe, s.x, s.y, s.floor));
+        const mean = v.reduce((a, b) => a + b, 0) / v.length;
+        const err = v.reduce((a, b) => a + (b - mean) ** 2, 0);
+        if (!best || err < best.err) best = { f, x, y, p0: mean, err };
+      }
+    }
+  });
+  return best;
+}
+
+// Search the router's floor for the spot that gives the most good coverage.
+function bestSpot(ap) {
+  prepWalls();
+  const others = placedAps().filter((a) => a.id !== ap.id);
+  const ocals = others.map((a) => calibrate(a));
+  const cal = calibrate(ap);
+  const pts = [];
+  plan.floors.forEach((fl, f) => {
+    for (let x = 0.25; x < fl.width; x += 0.5) for (let y = 0.25; y < fl.depth; y += 0.5) {
+      let o = -120;
+      others.forEach((a, k) => { o = Math.max(o, predict(a, ocals[k], x, y, f)); });
+      pts.push({ x, y, f, o });
+    }
+  });
+  const score = (cand) => {
+    let good = 0, sum = 0;
+    for (const p of pts) {
+      const v = Math.max(p.o, rawPredict(cand, p.x, p.y, p.f) + cal.off);
+      if (v >= GOOD) good++;
+      sum += Math.max(v, -95);
+    }
+    return good / pts.length + sum / pts.length / 10000;
+  };
+  const fl = plan.floors[ap.floor];
+  const cand = { ...ap };
+  let best = { x: ap.x, y: ap.y, s: score(ap) };
+  const before = best.s;
+  for (let x = 0.5; x < fl.width; x += 0.5) for (let y = 0.5; y < fl.depth; y += 0.5) {
+    cand.x = x; cand.y = y;
+    const s = score(cand);
+    if (s > best.s + 1e-9) best = { x, y, s };
+  }
+  return { x: best.x, y: best.y, before: Math.floor(before * 100), after: Math.floor(best.s * 100) };
+}
+
+// ---------- Three.js scene ----------
+const stage = $('#stage');
+const view = $('#view');
+const labelsEl = $('#labels');
+let renderer, scene, camera, controls, world;
+let floorViews = [];
+let apMeshes = [];
+let sampleMeshes = [];
+let wallMeshes = [];
+let ghost = null, wallPreview = null;
+let tokens = {};
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function readTokens() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = (n) => cs.getPropertyValue(n).trim() || '#888';
+  tokens = { scene: g('--scene'), grid: g('--scene-grid'), wall: g('--wall'), accent: g('--accent'), ink: g('--ink') };
+  if (scene) { scene.background = new THREE.Color(tokens.scene); rebuild(); }
+}
+
+function initThree() {
+  if (!window.THREE || !THREE.OrbitControls) {
+    view.innerHTML = '<div class="nogl">The 3D library could not load. Check your connection and reload the page.</div>';
+    return false;
+  }
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    view.innerHTML = '<div class="nogl">This browser could not start 3D graphics (WebGL). Try another browser or device.</div>';
+    return false;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  view.appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(tokens.scene);
+  camera = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.09;
+  controls.maxPolarAngle = Math.PI * 0.49; controls.minDistance = 3; controls.maxDistance = 120;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445066, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(8, 20, 12); scene.add(sun);
+  world = new THREE.Group(); scene.add(world);
+  new ResizeObserver(resize).observe(stage);
+  resize();
+  return true;
+}
+function resize() {
+  if (!renderer) return;
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  renderer.domElement.style.width = w + 'px'; renderer.domElement.style.height = h + 'px';
+  camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix();
+}
+function extent() {
+  const W = Math.max(...plan.floors.map((f) => f.width)), D = Math.max(...plan.floors.map((f) => f.depth));
+  return { W, D, cx: W / 2, cz: D / 2 };
+}
+const baseY = (f) => f * (plan.floorHeight + ui.explode);
+function toWorld(x, y, f, h = 0) { const e = extent(); return new THREE.Vector3(x - e.cx, baseY(f) + h, y - e.cz); }
+function fitCamera() {
+  if (!camera) return;
+  const { W, D } = extent();
+  const top = baseY(plan.floors.length - 1) + plan.floorHeight;
+  const r = Math.max(W, D, top) * 1.15 + 3;
+  controls.target.set(0, top * 0.38, 0);
+  camera.position.set(r * 0.8, top * 0.38 + r * 0.55, r * 1.0);
+  controls.update();
+}
+function disposeTree(o) {
+  o.traverse((c) => {
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) { (Array.isArray(c.material) ? c.material : [c.material]).forEach((m) => { if (m.map) m.map.dispose(); m.dispose(); }); }
+  });
+}
+
+function buildFloor(f) {
+  const fl = plan.floors[f];
+  const g = new THREE.Group();
+  g.position.y = baseY(f);
+  const e = extent();
+  const fv = { group: g, f };
+
+  // slab + outline
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(fl.width, 0.06, fl.depth),
+    new THREE.MeshLambertMaterial({ color: new THREE.Color(tokens.grid), transparent: true, opacity: 0.18 }));
+  slab.position.set(fl.width / 2 - e.cx, -0.04, fl.depth / 2 - e.cz);
+  g.add(slab);
+  if (ui.grid) {
+    const pts = [];
+    for (let x = 0; x <= fl.width + 1e-6; x += 1) { pts.push(x - e.cx, 0.012, -e.cz, x - e.cx, 0.012, fl.depth - e.cz); }
+    for (let y = 0; y <= fl.depth + 1e-6; y += 1) { pts.push(-e.cx, 0.012, y - e.cz, fl.width - e.cx, 0.012, y - e.cz); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    g.add(new THREE.LineSegments(gg, new THREE.LineBasicMaterial({ color: new THREE.Color(tokens.grid), transparent: true, opacity: 0.55 })));
+  }
+
+  // heatmap plane (canvas texture: row j = plan y)
+  const fd = fields[f];
+  const canvas = document.createElement('canvas'); canvas.width = fd.nx; canvas.height = fd.ny;
+  const tex = new THREE.CanvasTexture(canvas); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+  const heat = new THREE.Mesh(new THREE.PlaneGeometry(fl.width, fl.depth),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.93, side: THREE.DoubleSide, depthWrite: false }));
+  heat.rotation.x = -Math.PI / 2;
+  heat.position.set(fl.width / 2 - e.cx, 0.02, fl.depth / 2 - e.cz);
+  heat.renderOrder = 1;
+  g.add(heat);
+  Object.assign(fv, { canvas, tex, heat });
+
+  // terrain surface (vertex heights = signal)
+  const n = fd.nx * fd.ny;
+  const tg = new THREE.BufferGeometry();
+  tg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  tg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  const idx = [];
+  for (let j = 0; j < fd.ny - 1; j++) for (let i = 0; i < fd.nx - 1; i++) {
+    const a = j * fd.nx + i, b = a + 1, c = a + fd.nx, d = c + 1;
+    idx.push(a, c, b, b, c, d);
+  }
+  tg.setIndex(idx);
+  const terrain = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.94 }));
+  g.add(terrain);
+  fv.terrain = terrain;
+
+  // walls
+  const wallH = plan.floorHeight * 0.9;
+  for (const w of plan.walls) {
+    if (w.floor !== f) continue;
+    const L = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+    if (L < 0.05) continue;
+    const m = MATERIALS[w.material];
+    let col = new THREE.Color(tokens.wall);
+    if (w.material === 'glass') col = new THREE.Color(0x7fb6d9);
+    if (w.material === 'metal') col = new THREE.Color(0x9aa3ad);
+    if (w.material === 'concrete' || w.material === 'brick') col.offsetHSL(0, 0, -0.08);
+    const h = w.material === 'metal' ? 1.8 : wallH;
+    const box = new THREE.Mesh(new THREE.BoxGeometry(L, h, m.thick),
+      new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: w.material === 'glass' ? 0.25 : 0.42, depthWrite: false }));
+    box.position.set((w.x1 + w.x2) / 2 - e.cx, h / 2, (w.y1 + w.y2) / 2 - e.cz);
+    box.rotation.y = -Math.atan2(w.y2 - w.y1, w.x2 - w.x1);
+    box.renderOrder = 2;
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.85 }));
+    box.add(edges);
+    box.userData = { kind: 'wall', wall: w };
+    box.visible = ui.walls;
+    g.add(box);
+    wallMeshes.push(box);
+  }
+
+  // readings
+  plan.samples.forEach((s) => {
+    if (s.floor !== f) return;
+    const v = sampleValue(s);
+    const col = new THREE.Color(v == null ? tokens.grid : rssiCss(v));
+    const pin = new THREE.Group();
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, RX_H, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(tokens.ink) }));
+    stick.position.y = RX_H / 2;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.11, 18, 12), new THREE.MeshLambertMaterial({ color: col, emissive: col, emissiveIntensity: 0.35 }));
+    head.position.y = RX_H;
+    pin.add(stick, head);
+    pin.position.set(s.x - e.cx, 0, s.y - e.cz);
+    pin.userData = { kind: 'sample', sample: s };
+    head.userData = pin.userData;
+    pin.visible = ui.readings;
+    g.add(pin);
+    sampleMeshes.push(pin);
+  });
+  world.add(g);
+  return fv;
+}
+function sampleValue(s) {
+  const aps = placedAps().filter((ap) => ui.source === 'best' || ap.id === ui.source);
+  let best = null;
+  for (const ap of aps) { const m = readingFor(s, ap); if (m != null && (best == null || m > best)) best = m; }
+  return best;
+}
+
+function paintFloor(fv) {
+  const fd = fields[fv.f];
+  const hasAps = fd.aps.length > 0;
+  const ctx = fv.canvas.getContext('2d');
+  const img = ctx.createImageData(fd.nx, fd.ny);
+  const pos = fv.terrain.geometry.attributes.position, colA = fv.terrain.geometry.attributes.color;
+  const fl = plan.floors[fv.f], e = extent();
+  const grid = new THREE.Color(tokens.grid);
+  for (let k = 0; k < fd.vals.length; k++) {
+    const v = fd.vals[k];
+    const c = hasAps ? rssiRGB(v) : [grid.r * 255, grid.g * 255, grid.b * 255];
+    img.data[k * 4] = c[0]; img.data[k * 4 + 1] = c[1]; img.data[k * 4 + 2] = c[2];
+    img.data[k * 4 + 3] = hasAps ? 235 : 60;
+    const i = k % fd.nx, j = (k / fd.nx) | 0;
+    const h = hasAps ? clamp((v + 95) / 65, 0, 1) * Math.min(1.5, plan.floorHeight * 0.6) + 0.03 : 0.03;
+    pos.setXYZ(k, (i / (fd.nx - 1)) * fl.width - e.cx, h, (j / (fd.ny - 1)) * fl.depth - e.cz);
+    colA.setXYZ(k, c[0] / 255, c[1] / 255, c[2] / 255);
+  }
+  ctx.putImageData(img, 0, 0);
+  fv.tex.needsUpdate = true;
+  pos.needsUpdate = true; colA.needsUpdate = true;
+  fv.terrain.geometry.computeVertexNormals();
+  fv.terrain.geometry.computeBoundingSphere();
+  fv.heat.visible = ui.mode === 'heat';
+  fv.terrain.visible = ui.mode === 'terrain';
+}
+
+function buildAps() {
+  apMeshes.forEach((m) => { m.parent && m.parent.remove(m); disposeTree(m); });
+  apMeshes = [];
+  const accent = new THREE.Color(tokens.accent);
+  plan.aps.forEach((ap) => {
+    if (!isFinite(ap.x)) return;
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 16),
+      new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.6, wireframe: ap.estimated }));
+    body.position.y = AP_H;
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, AP_H, 8), new THREE.MeshBasicMaterial({ color: accent }));
+    stalk.position.y = AP_H / 2;
+    g.add(body, stalk);
+    const rings = [];
+    for (let r = 0; r < 3; r++) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 48),
+        new THREE.MeshBasicMaterial({ color: accent, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.userData.phase = r / 3;
+      g.add(ring); rings.push(ring);
+    }
+    g.userData = { kind: 'ap', ap, rings };
+    body.userData = g.userData;
+    g.position.copy(toWorld(ap.x, ap.y, ap.floor));
+    world.add(g);
+    apMeshes.push(g);
+  });
+}
+
+let labelEls = [];
+function buildLabels() {
+  labelsEl.innerHTML = '';
+  labelEls = [];
+  const e = extent();
+  plan.floors.forEach((fl, f) => {
+    const d = document.createElement('div'); d.className = 'lbl floor'; d.textContent = fl.name;
+    labelsEl.appendChild(d);
+    labelEls.push({ el: d, pos: () => toWorld(fl.width + 0.4, 0, f).add(new THREE.Vector3(0, 0.05, 0)) });
+  });
+  plan.aps.forEach((ap) => {
+    if (!isFinite(ap.x)) return;
+    const d = document.createElement('div'); d.className = 'lbl' + (ap.estimated ? ' ghost' : '');
+    d.textContent = ap.name + (ap.estimated ? ' (estimated)' : '');
+    labelsEl.appendChild(d);
+    labelEls.push({ el: d, pos: () => toWorld(ap.x, ap.y, ap.floor, AP_H + 0.42) });
+  });
+  if (suggestion) {
+    const d = document.createElement('div'); d.className = 'lbl ghost'; d.textContent = 'Best spot';
+    labelsEl.appendChild(d);
+    labelEls.push({ el: d, pos: () => toWorld(suggestion.x, suggestion.y, suggestion.floor, AP_H + 0.42) });
+  }
+  void e;
+}
+function updateLabels() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  for (const L of labelEls) {
+    const p = L.pos().project(camera);
+    if (p.z > 1 || p.z < -1) { L.el.hidden = true; continue; }
+    L.el.hidden = false;
+    L.el.style.left = ((p.x + 1) / 2 * w).toFixed(1) + 'px';
+    L.el.style.top = ((1 - p.y) / 2 * h).toFixed(1) + 'px';
+  }
+}
+
+function buildGhost() {
+  if (ghost) { world.remove(ghost); disposeTree(ghost); ghost = null; }
+  if (!suggestion) return;
+  const accent = new THREE.Color(tokens.accent);
+  ghost = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 10), new THREE.MeshBasicMaterial({ color: accent, wireframe: true }));
+  body.position.y = AP_H;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.45, 40), new THREE.MeshBasicMaterial({ color: accent, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.07;
+  ghost.add(body, ring);
+  ghost.position.copy(toWorld(suggestion.x, suggestion.y, suggestion.floor));
+  world.add(ghost);
+}
+
+let built = false;
+function rebuild(opts = {}) {
+  computeField();
+  renderSidebar();
+  if (!scene) return;
+  world.children.slice().forEach((c) => { world.remove(c); disposeTree(c); });
+  floorViews = []; apMeshes = []; sampleMeshes = []; wallMeshes = []; ghost = null; wallPreview = null;
+  plan.floors.forEach((_, f) => { const fv = buildFloor(f); paintFloor(fv); floorViews.push(fv); });
+  buildAps();
+  buildGhost();
+  buildLabels();
+  if (!built || opts.fit) { fitCamera(); built = true; }
+}
+// Lighter refresh while dragging a router.
+function refreshField() {
+  computeField();
+  floorViews.forEach(paintFloor);
+  apMeshes.forEach((m) => m.position.copy(toWorld(m.userData.ap.x, m.userData.ap.y, m.userData.ap.floor)));
+  renderStats();
+}
+
+// ---------- Picking ----------
+const raycaster = window.THREE ? new THREE.Raycaster() : null;
+const ndc = window.THREE ? new THREE.Vector2() : null;
+function setRay(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+// Intersect the ray with a floor's horizontal plane; returns plan coords.
+function hitFloor(f) {
+  const y = baseY(f);
+  const ray = raycaster.ray;
+  if (Math.abs(ray.direction.y) < 1e-6) return null;
+  const t = (y - ray.origin.y) / ray.direction.y;
+  if (t <= 0) return null;
+  const p = ray.origin.clone().addScaledVector(ray.direction, t);
+  const e = extent();
+  const x = p.x + e.cx, z = p.z + e.cz, fl = plan.floors[f];
+  return { x, y: z, f, t, inside: x >= 0 && z >= 0 && x <= fl.width && z <= fl.depth };
+}
+function hitAnyFloor() {
+  let best = null;
+  plan.floors.forEach((_, f) => { const h = hitFloor(f); if (h && h.inside && (!best || h.t < best.t)) best = h; });
+  return best;
+}
+function pickObject(list) {
+  const hits = raycaster.intersectObjects(list.filter((o) => o.visible), true);
+  return hits.length ? hits[0].object.userData : null;
+}
+const snap = (v, s = 0.25) => Math.round(v / s) * s;
+
+// ---------- Interaction ----------
+let down = null, dragAp = null, wallStart = null, dragQueued = false;
+function onDown(ev) {
+  if (!renderer) return;
+  hidePop();
+  down = { x: ev.clientX, y: ev.clientY };
+  setRay(ev);
+  if (ui.tool === 'view' || ui.tool === 'router') {
+    const hit = pickObject(apMeshes);
+    if (hit && hit.kind === 'ap') {
+      dragAp = { ap: hit.ap, snapshot: JSON.stringify(plan) };
+      controls.enabled = false;
+      view.classList.add('dragging');
+      renderer.domElement.setPointerCapture(ev.pointerId);
+    }
+  }
+}
+function onMove(ev) {
+  if (!renderer) return;
+  setRay(ev);
+  if (dragAp) {
+    const h = hitFloor(dragAp.ap.floor);
+    if (!h) return;
+    const fl = plan.floors[dragAp.ap.floor];
+    dragAp.ap.x = clamp(snap(h.x, 0.1), 0, fl.width);
+    dragAp.ap.y = clamp(snap(h.y, 0.1), 0, fl.depth);
+    dragAp.ap.estimated = false;
+    dragAp.moved = true;
+    if (!dragQueued) { dragQueued = true; requestAnimationFrame(() => { dragQueued = false; refreshField(); }); }
+    hoverReadout(dragAp.ap.x, dragAp.ap.y, dragAp.ap.floor);
+    return;
+  }
+  if (ui.tool === 'wall' && wallStart) {
+    const h = hitFloor(ui.floor);
+    if (h) drawWallPreview(wallStart, snapPoint(h.x, h.y));
+  }
+  const s = pickObject(sampleMeshes);
+  if (s && s.kind === 'sample') { hoverSample(s.sample); return; }
+  const h = (ui.tool === 'view') ? hitAnyFloor() : (() => { const r = hitFloor(ui.floor); return r && r.inside ? r : null; })();
+  if (h) hoverReadout(h.x, h.y, h.f); else clearHud();
+}
+function onUp(ev) {
+  if (!renderer) return;
+  if (dragAp) {
+    controls.enabled = true;
+    view.classList.remove('dragging');
+    if (dragAp.moved) {
+      undoStack.push(dragAp.snapshot);
+      isExample = false; suggestion = null; save(); rebuild();
+    }
+    dragAp = null; down = null;
+    return;
+  }
+  if (!down) return;
+  const moved = Math.hypot(ev.clientX - down.x, ev.clientY - down.y);
+  down = null;
+  if (moved > 5) return;
+  setRay(ev);
+  onClick(ev);
+}
+function snapPoint(x, y) {
+  let best = null;
+  for (const w of plan.walls) {
+    if (w.floor !== ui.floor) continue;
+    for (const [px, py] of [[w.x1, w.y1], [w.x2, w.y2]]) {
+      const d = Math.hypot(px - x, py - y);
+      if (d < 0.3 && (!best || d < best.d)) best = { x: px, y: py, d };
+    }
+  }
+  const fl = plan.floors[ui.floor];
+  return best ? { x: best.x, y: best.y } : { x: clamp(snap(x), 0, fl.width), y: clamp(snap(y), 0, fl.depth) };
+}
+function drawWallPreview(a, b) {
+  if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); }
+  const gg = new THREE.BufferGeometry().setFromPoints([toWorld(a.x, a.y, ui.floor, 0.05), toWorld(b.x, b.y, ui.floor, 0.05), toWorld(b.x, b.y, ui.floor, 1.2), toWorld(a.x, a.y, ui.floor, 1.2), toWorld(a.x, a.y, ui.floor, 0.05)]);
+  wallPreview = new THREE.Line(gg, new THREE.LineBasicMaterial({ color: new THREE.Color(tokens.accent) }));
+  world.add(wallPreview);
+  setHint(`Wall ${fmt(Math.hypot(b.x - a.x, b.y - a.y), 2)} m · click to finish, Esc to cancel`);
+}
+function onClick(ev) {
+  if (ui.tool === 'view') return;
+  if (ui.tool === 'erase') {
+    const hit = pickObject([...apMeshes, ...sampleMeshes]);
+    if (hit && hit.kind === 'ap') { mutate(() => { plan.aps = plan.aps.filter((a) => a !== hit.ap); if (ui.source === hit.ap.id) ui.source = 'best'; }); toast(`Removed ${hit.ap.name}`); return; }
+    if (hit && hit.kind === 'sample') { mutate(() => { plan.samples = plan.samples.filter((s) => s !== hit.sample); }); toast('Removed reading'); return; }
+    const h = hitFloor(ui.floor);
+    if (h && h.inside) {
+      let best = null;
+      plan.walls.forEach((w) => { if (w.floor !== ui.floor) return; const d = distSeg(h.x, h.y, w); if (d < 0.35 && (!best || d < best.d)) best = { w, d }; });
+      if (best) { mutate(() => { plan.walls = plan.walls.filter((w) => w !== best.w); }); toast('Removed wall'); return; }
+    }
+    toast(`Nothing to remove there on ${plan.floors[ui.floor].name}`);
+    return;
+  }
+  const h = hitFloor(ui.floor);
+  if (!h || !h.inside) { toast(`Click inside ${plan.floors[ui.floor].name}. Change the active floor under Floors.`); return; }
+  if (ui.tool === 'wall') {
+    const p = snapPoint(h.x, h.y);
+    if (!wallStart) { wallStart = p; drawWallPreview(p, p); return; }
+    if (Math.hypot(p.x - wallStart.x, p.y - wallStart.y) < 0.1) return;
+    const a = wallStart;
+    wallStart = p; // chain walls: next click continues from here
+    mutate(() => { plan.walls.push({ floor: ui.floor, x1: a.x, y1: a.y, x2: p.x, y2: p.y, material: ui.wallMat }); });
+    drawWallPreview(p, p);
+    return;
+  }
+  if (ui.tool === 'router') {
+    const id = 'ap' + Date.now().toString(36);
+    mutate(() => {
+      plan.aps.push({ id, name: `Router ${plan.aps.length + 1}`, bssid: '', ssid: '', floor: ui.floor, x: snap(h.x, 0.1), y: snap(h.y, 0.1), p0: -38, estimated: false });
+    });
+    toast('Router placed. Drag it to try other spots.');
+    return;
+  }
+  if (ui.tool === 'reading') { openPop(ev, h); }
+}
+
+// Reading popover
+let popAt = null;
+function openPop(ev, h) {
+  if (!placedAps().length && !plan.aps.length) { toast('Place a router first, so the reading has a network to belong to.'); return; }
+  popAt = { x: snap(h.x, 0.1), y: snap(h.y, 0.1), f: ui.floor };
+  const sel = $('#popAp');
+  sel.innerHTML = plan.aps.map((a) => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+  if (ui.source !== 'best') sel.value = ui.source;
+  const pred = signalAt(popAt.x, popAt.y, popAt.f);
+  $('#popDbm').value = Math.round(clamp(pred.v, -100, -20));
+  const pop = $('#pop');
+  pop.hidden = false;
+  const r = stage.getBoundingClientRect();
+  const px = clamp(ev.clientX - r.left + 12, 8, r.width - pop.offsetWidth - 8);
+  const py = clamp(ev.clientY - r.top + 12, 8, r.height - pop.offsetHeight - 8);
+  pop.style.left = px + 'px'; pop.style.top = py + 'px';
+  $('#popDbm').focus(); $('#popDbm').select();
+}
+function hidePop() { $('#pop').hidden = true; popAt = null; }
+$('#pop').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!popAt) return;
+  const v = +$('#popDbm').value;
+  if (!isFinite(v) || v > -10 || v < -100) { toast('Enter the signal in dBm, between −100 and −10.'); return; }
+  const ap = plan.aps.find((a) => a.id === $('#popAp').value);
+  const at = popAt;
+  mutate(() => { plan.samples.push({ floor: at.f, x: at.x, y: at.y, label: $('#popLabel').value.trim(), readings: { [apKey(ap)]: v } }); });
+  $('#popLabel').value = '';
+  hidePop();
+  toast(`Saved ${v} dBm. The map now bends toward it.`);
+});
+$('#popCancel').addEventListener('click', hidePop);
+
+// HUD
+function setQ(v) {
+  const q = quality(v);
+  $('#hudQ i').style.background = rssiCss(v);
+  $('#hudQ span').textContent = q[1];
+  return q;
+}
+function hoverReadout(x, y, f) {
+  if (!placedAps().length) { $('#hudWhere').textContent = `${plan.floors[f].name} · ${fmt(x)}, ${fmt(y)} m`; $('#hudDbm').innerHTML = '– <small>dBm</small>'; $('#hudQ span').textContent = 'Place a router to see coverage'; $('#hudQ i').style.background = 'transparent'; $('#hudSrc').textContent = ''; return; }
+  const s = signalAt(x, y, f);
+  $('#hudWhere').textContent = `${plan.floors[f].name} · ${fmt(x)}, ${fmt(y)} m`;
+  $('#hudDbm').innerHTML = `${Math.round(s.v)} <small>dBm · model</small>`;
+  const q = setQ(s.v);
+  const d = s.detail || {};
+  const bits = [`${q[2]}.`];
+  if (s.ap) bits.push(`From ${s.ap.name}, ${fmt(d.d)} m away through ${d.walls} wall${d.walls === 1 ? '' : 's'}${d.floors ? ` and ${d.floors} floor${d.floors > 1 ? 's' : ''}` : ''}.`);
+  $('#hudSrc').textContent = bits.join(' ');
+}
+function hoverSample(s) {
+  const v = sampleValue(s);
+  $('#hudWhere').textContent = `${s.label || 'Reading'} · ${plan.floors[s.floor].name} · ${fmt(s.x)}, ${fmt(s.y)} m`;
+  if (v == null) { $('#hudDbm').innerHTML = '– <small>dBm</small>'; $('#hudQ span').textContent = 'No reading for the selected router'; $('#hudQ i').style.background = 'transparent'; $('#hudSrc').textContent = ''; return; }
+  $('#hudDbm').innerHTML = `${Math.round(v)} <small>dBm · measured</small>`;
+  const q = setQ(v);
+  const others = Object.keys(s.readings).length;
+  $('#hudSrc').textContent = `${q[2]}. ${others} network${others === 1 ? '' : 's'} recorded at this spot.`;
+}
+function clearHud() {
+  $('#hudWhere').textContent = 'Hover over a floor';
+  $('#hudDbm').innerHTML = '– <small>dBm</small>';
+  $('#hudQ span').textContent = ''; $('#hudQ i').style.background = 'transparent';
+  $('#hudSrc').textContent = '';
+}
+
+// ---------- Sidebar ----------
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function renderStats() {
+  const st = coverageStats();
+  const hasAps = placedAps().length > 0;
+  const tot = st.reduce((a, s) => a + s.n, 0) || 1;
+  const sum = (k) => st.reduce((a, s) => a + s[k] * s.n, 0) / tot;
+  $('#covPct').textContent = hasAps ? Math.round(sum('good') * 100) + '%' : '–';
+  $('#weakPct').textContent = hasAps ? Math.round(sum('weak') * 100) + '%' : '–';
+  $('#deadPct').textContent = hasAps ? Math.round(sum('dead') * 100) + '%' : '–';
+  $('#floorBars').innerHTML = plan.floors.map((fl, f) => {
+    const s = st[f];
+    if (!hasAps) return '';
+    return `<div class="fbar"><span class="name" title="${esc(fl.name)}">${esc(fl.name)}</span>
+      <span class="track" role="img" aria-label="${Math.round(s.good * 100)}% good, ${Math.round(s.weak * 100)}% weak, ${Math.round(s.dead * 100)}% dead">
+        <i style="width:${s.good * 100}%;background:${rssiCss(-55)}"></i><i style="width:${s.weak * 100}%;background:${rssiCss(-73)}"></i><i style="width:${s.dead * 100}%;background:${rssiCss(-88)}"></i>
+      </span><span class="pct">${Math.round(s.good * 100)}%</span></div>`;
+  }).join('');
+}
+function renderSidebar() {
+  $('#planName').textContent = `${plan.name} · ${plan.floors.length} floor${plan.floors.length > 1 ? 's' : ''}`;
+  $('#exampleBadge').hidden = !isExample;
+  ui.floor = clamp(ui.floor, 0, plan.floors.length - 1);
+  $('#floorSel').innerHTML = plan.floors.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join('');
+  $('#floorSel').value = ui.floor;
+  const fl = plan.floors[ui.floor];
+  if (document.activeElement !== $('#floorName')) $('#floorName').value = fl.name;
+  if (document.activeElement !== $('#floorW')) $('#floorW').value = fl.width;
+  if (document.activeElement !== $('#floorD')) $('#floorD').value = fl.depth;
+  if (document.activeElement !== $('#floorH')) $('#floorH').value = plan.floorHeight;
+  $('#delFloor').disabled = plan.floors.length < 2;
+  // source
+  if (ui.source !== 'best' && !placedAps().some((a) => a.id === ui.source)) ui.source = 'best';
+  $('#sourceSel').innerHTML = `<option value="best">Strongest router at each spot</option>` + placedAps().map((a) => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('');
+  $('#sourceSel').value = ui.source;
+  // band / model
+  $('#band-24').setAttribute('aria-pressed', plan.model.band === '2.4');
+  $('#band-5').setAttribute('aria-pressed', plan.model.band === '5');
+  $('#nExp').value = plan.model.n; $('#nVal').textContent = fmt(plan.model.n);
+  // APs
+  $('#apList').innerHTML = plan.aps.length ? plan.aps.map((a) => {
+    const cal = cals.get(a.id);
+    const where = isFinite(a.x) ? `${esc(plan.floors[a.floor].name)} · ${fmt(a.x)}, ${fmt(a.y)} m` : 'not on the map yet';
+    const calTxt = cal && cal.n ? ` · ${cal.n} reading${cal.n > 1 ? 's' : ''}` : '';
+    return `<div class="item"><span class="dot${a.estimated ? ' est' : ''}"></span>
+      <div class="meta"><input type="text" value="${esc(a.name)}" data-rename="${esc(a.id)}" aria-label="Router name"><small>${where}${calTxt}${a.estimated ? ' · estimated' : ''}</small></div>
+      <div class="acts">${isFinite(a.x) ? `<button data-best="${esc(a.id)}" title="Find the placement with the most good coverage">Best spot</button>` : ''}<button class="ghost danger" data-del="${esc(a.id)}" aria-label="Remove ${esc(a.name)}">✕</button></div></div>`;
+  }).join('') : '<div class="empty">No routers yet. Pick the Router tool and click where yours sits.</div>';
+  // other networks seen in readings
+  const known = new Set(plan.aps.flatMap((a) => [apKey(a), norm(a.id)]));
+  const counts = {};
+  plan.samples.forEach((s) => Object.entries(s.readings).forEach(([k, v]) => {
+    if (known.has(k)) return;
+    counts[k] = counts[k] || { n: 0, best: -200 };
+    counts[k].n++; counts[k].best = Math.max(counts[k].best, v);
+  }));
+  const others = Object.entries(counts).sort((a, b) => b[1].n - a[1].n || b[1].best - a[1].best).slice(0, 8);
+  $('#otherWrap').hidden = !others.length;
+  $('#otherList').innerHTML = others.map(([k, c]) => {
+    const net = plan.networks[k] || {};
+    return `<div class="item"><span class="dot est"></span><div class="meta"><b style="padding-left:5px">${esc(net.ssid || k)}</b><small>seen at ${c.n} spot${c.n > 1 ? 's' : ''} · best ${c.best} dBm</small></div>
+      <div class="acts"><button data-locate="${esc(k)}" ${c.n < 3 ? 'disabled title="Needs readings from at least 3 spots"' : 'title="Estimate where this router is from your readings"'}>Locate</button></div></div>`;
+  }).join('');
+  renderStats();
+}
+
+// ---------- Wiring ----------
+function setTool(t) {
+  ui.tool = t; wallStart = null;
+  if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); wallPreview = null; }
+  hidePop();
+  $$('[data-tool]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tool === t));
+  view.className = 'tool-' + t;
+  $('#wallMatRow').hidden = t !== 'wall';
+  setHint();
+}
+function setHint(text) {
+  const fname = plan.floors[ui.floor].name;
+  const hints = {
+    view: 'Drag to orbit · scroll to zoom · drag a router to move it',
+    wall: `Click two points on ${fname} to draw a wall · walls chain · Esc to stop`,
+    router: `Click on ${fname} to place a router`,
+    reading: `Click where you stood on ${fname}, then type the dBm your device showed`,
+    erase: `Click a wall, router or reading on ${fname} to delete it`,
+  };
+  $('#toolHint').textContent = text || hints[ui.tool];
+}
+let toastTimer = null;
+function toast(msg, action) {
+  $('#toastMsg').textContent = msg;
+  const b = $('#toastAct');
+  b.hidden = !action;
+  if (action) { b.textContent = action.label; b.onclick = () => { action.run(); $('#toast').hidden = true; }; }
+  $('#toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('#toast').hidden = true; }, action ? 9000 : 3200);
+}
+
+$$('[data-tool]').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+$('#wallMat').innerHTML = Object.entries(MATERIALS).map(([k, m]) => `<option value="${k}">${m.label} (−${m.loss} dB)</option>`).join('');
+$('#wallMat').value = ui.wallMat;
+$('#wallMat').addEventListener('change', (e) => { ui.wallMat = e.target.value; });
+$('#floorSel').addEventListener('change', (e) => { ui.floor = +e.target.value; wallStart = null; renderSidebar(); setHint(); });
+$('#floorName').addEventListener('change', (e) => { const v = e.target.value.trim(); if (v) mutate(() => { plan.floors[ui.floor].name = v; }); });
+$('#floorW').addEventListener('change', (e) => { const v = clamp(+e.target.value || 10, 2, 80); mutate(() => { plan.floors[ui.floor].width = v; }); fitCamera(); });
+$('#floorD').addEventListener('change', (e) => { const v = clamp(+e.target.value || 8, 2, 80); mutate(() => { plan.floors[ui.floor].depth = v; }); fitCamera(); });
+$('#floorH').addEventListener('change', (e) => { const v = clamp(+e.target.value || 2.7, 2, 6); mutate(() => { plan.floorHeight = v; }); });
+$('#addFloor').addEventListener('click', () => {
+  const last = plan.floors[plan.floors.length - 1];
+  mutate(() => { plan.floors.push({ name: `Floor ${plan.floors.length + 1}`, width: last.width, depth: last.depth }); });
+  ui.floor = plan.floors.length - 1; renderSidebar(); setHint(); fitCamera();
+});
+$('#delFloor').addEventListener('click', () => {
+  if (plan.floors.length < 2) return;
+  const f = ui.floor, name = plan.floors[f].name;
+  mutate(() => {
+    plan.floors.splice(f, 1);
+    const shift = (o) => { if (o.floor > f) o.floor--; };
+    plan.walls = plan.walls.filter((w) => w.floor !== f); plan.walls.forEach(shift);
+    plan.samples = plan.samples.filter((s) => s.floor !== f); plan.samples.forEach(shift);
+    plan.aps = plan.aps.filter((a) => a.floor !== f); plan.aps.forEach(shift);
+  });
+  ui.floor = Math.max(0, f - 1); renderSidebar(); fitCamera();
+  toast(`Removed ${name}`, { label: 'Undo', run: undo });
+});
+$('#explode').addEventListener('input', (e) => { ui.explode = +e.target.value; $('#explodeVal').textContent = fmt(ui.explode) + ' m'; rebuild(); });
+$$('[data-mode]').forEach((b) => b.addEventListener('click', () => {
+  ui.mode = b.dataset.mode;
+  $$('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.mode === ui.mode));
+  floorViews.forEach((fv) => { fv.heat.visible = ui.mode === 'heat'; fv.terrain.visible = ui.mode === 'terrain'; });
+}));
+$('#sourceSel').addEventListener('change', (e) => { ui.source = e.target.value; rebuild(); });
+$('#showWalls').addEventListener('change', (e) => { ui.walls = e.target.checked; wallMeshes.forEach((m) => { m.visible = ui.walls; }); });
+$('#showReadings').addEventListener('change', (e) => { ui.readings = e.target.checked; sampleMeshes.forEach((m) => { m.visible = ui.readings; }); });
+$('#showGrid').addEventListener('change', (e) => { ui.grid = e.target.checked; rebuild(); });
+$$('[data-band]').forEach((b) => b.addEventListener('click', () => mutate(() => { plan.model.band = b.dataset.band; }, { keepExample: true })));
+let nTimer = null;
+$('#nExp').addEventListener('input', (e) => {
+  $('#nVal').textContent = fmt(+e.target.value);
+  clearTimeout(nTimer);
+  nTimer = setTimeout(() => mutate(() => { plan.model.n = +e.target.value; }, { keepExample: true }), 120);
+});
+$('#apList').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del]'), bst = e.target.closest('[data-best]');
+  if (del) {
+    const ap = plan.aps.find((a) => a.id === del.dataset.del);
+    mutate(() => { plan.aps = plan.aps.filter((a) => a !== ap); });
+    toast(`Removed ${ap.name}`, { label: 'Undo', run: undo });
+  }
+  if (bst) {
+    const ap = plan.aps.find((a) => a.id === bst.dataset.best);
+    const r = bestSpot(ap);
+    if (r.after <= r.before || (Math.abs(r.x - ap.x) < 0.3 && Math.abs(r.y - ap.y) < 0.3)) { toast(`${ap.name} is already in about the best spot on its floor.`); return; }
+    suggestion = { apId: ap.id, x: r.x, y: r.y, floor: ap.floor };
+    buildGhost(); buildLabels();
+    toast(`Moving ${ap.name} to ${fmt(r.x)}, ${fmt(r.y)} m would lift good coverage from ${r.before}% to ${r.after}%.`, {
+      label: 'Move it there',
+      run: () => { const tx = suggestion.x, ty = suggestion.y; mutate(() => { ap.x = tx; ap.y = ty; ap.estimated = false; }); },
+    });
+  }
+});
+$('#apList').addEventListener('change', (e) => {
+  const id = e.target.dataset.rename;
+  if (!id) return;
+  const v = e.target.value.trim();
+  if (v) mutate(() => { plan.aps.find((a) => a.id === id).name = v; });
+});
+$('#otherList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-locate]');
+  if (!b) return;
+  const key = b.dataset.locate;
+  const r = locate(key);
+  if (!r) { toast('Needs readings from at least 3 spots to estimate a position.'); return; }
+  const net = plan.networks[key] || {};
+  mutate(() => {
+    plan.aps.push({ id: 'ap' + Date.now().toString(36), name: net.ssid || key, ssid: net.ssid || '', bssid: key, floor: r.f, x: r.x, y: r.y, p0: clamp(Math.round(r.p0), -60, -20), estimated: true });
+  }, { keepExample: true });
+  toast(`Estimated ${net.ssid || key} on ${plan.floors[r.f].name}. It is drawn as a wireframe until you drag it to its real spot.`);
+});
+
+// data in / out
+function applyData(obj, label) {
+  if (!obj || typeof obj !== 'object' || !Array.isArray(obj.floors) && !Array.isArray(obj.samples)) throw new Error('This does not look like a survey file. It needs at least "floors" or "samples".');
+  if (!Array.isArray(obj.floors) || !obj.floors.length) {
+    // a raw survey from the script without a floor plan: size floors to fit the readings
+    const maxF = Math.max(0, ...obj.samples.map((s) => +s.floor || 0));
+    obj.floors = Array.from({ length: maxF + 1 }, (_, f) => {
+      const pts = obj.samples.filter((s) => (+s.floor || 0) === f).concat((obj.aps || []).filter((a) => (+a.floor || 0) === f));
+      return { name: f === 0 ? 'Ground floor' : `Floor ${f + 1}`, width: Math.ceil(Math.max(4, ...pts.map((p) => +p.x || 0)) + 1), depth: Math.ceil(Math.max(4, ...pts.map((p) => +p.y || 0)) + 1) };
+    });
+  }
+  undoStack.push(JSON.stringify(plan));
+  plan = normalize(obj); isExample = false; suggestion = null; ui.floor = 0; ui.source = 'best';
+  save(); rebuild({ fit: true });
+  toast(`Loaded ${label || plan.name}: ${plan.samples.length} readings, ${plan.aps.length} router${plan.aps.length === 1 ? '' : 's'}.`);
+}
+$('#loadBtn').addEventListener('click', () => $('#fileIn').click());
+function readFile(file) {
+  const fr = new FileReader();
+  fr.onload = () => { try { applyData(JSON.parse(fr.result), file.name); } catch (err) { toast(err.message || 'Could not read that file.'); } };
+  fr.readAsText(file);
+}
+$('#fileIn').addEventListener('change', (e) => { if (e.target.files[0]) readFile(e.target.files[0]); e.target.value = ''; });
+stage.addEventListener('dragover', (e) => { e.preventDefault(); stage.classList.add('drop'); });
+stage.addEventListener('dragleave', () => stage.classList.remove('drop'));
+stage.addEventListener('drop', (e) => { e.preventDefault(); stage.classList.remove('drop'); if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+$('#editBtn').addEventListener('click', () => {
+  const out = { ...plan, aps: plan.aps.map((a) => ({ ...a })) };
+  $('#dataText').value = JSON.stringify(out, null, 2);
+  $('#dataErr').textContent = '';
+  $('#dataDlg').hidden = false;
+  $('#dataText').focus();
+});
+$('#dataClose').addEventListener('click', () => { $('#dataDlg').hidden = true; });
+$('#dataApply').addEventListener('click', () => {
+  try { applyData(JSON.parse($('#dataText').value)); $('#dataDlg').hidden = true; } catch (err) { $('#dataErr').textContent = err.message.startsWith('This') ? err.message : 'That is not valid JSON: ' + err.message; }
+});
+$('#dataCopy').addEventListener('click', () => {
+  const t = $('#dataText');
+  const done = () => { $('#dataErr').textContent = ''; toast('Copied survey JSON'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t.value).then(done, () => { t.select(); $('#dataErr').textContent = 'Copy was blocked here. The text is selected; press Ctrl+C.'; });
+  } else { t.select(); $('#dataErr').textContent = 'The text is selected; press Ctrl+C.'; }
+});
+$('#exampleBtn').addEventListener('click', () => {
+  undoStack.push(JSON.stringify(plan));
+  plan = normalize(EXAMPLE); isExample = true; suggestion = null; ui.floor = 0; ui.source = 'best'; save(); rebuild({ fit: true });
+  toast('Loaded the example home', { label: 'Undo', run: undo });
+});
+$('#clearBtn').addEventListener('click', () => {
+  undoStack.push(JSON.stringify(plan));
+  plan = normalize({ name: 'My home', floors: [{ name: 'Ground floor', width: 10, depth: 8 }] }); isExample = false; suggestion = null; ui.floor = 0;
+  save(); rebuild({ fit: true }); setTool('wall');
+  toast('Blank floor ready. Set its size under Floors, then draw your walls.', { label: 'Undo', run: undo });
+});
+document.addEventListener('keydown', (e) => {
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName);
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
+  if (e.key === 'Escape') {
+    if (!$('#dataDlg').hidden) { $('#dataDlg').hidden = true; return; }
+    hidePop();
+    if (wallStart) { wallStart = null; if (wallPreview) { world.remove(wallPreview); disposeTree(wallPreview); wallPreview = null; } setHint(); }
+  }
+});
+
+// legend
+(() => {
+  const lo = -95, hi = -35;
+  const pct = (v) => ((hi - v) / (hi - lo)) * 100;
+  const stops = [];
+  for (let v = hi; v >= lo; v -= 2.5) stops.push(`${rssiCss(v)} ${pct(v).toFixed(1)}%`);
+  $('#legendBar').style.background = `linear-gradient(to bottom, ${stops.join(',')})`;
+  $('#legendTicks').innerHTML = [[-40, 'Excellent'], [-55, 'Good'], [-67, 'Streaming'], [-75, 'Weak'], [-85, 'Dead']]
+    .map(([v, t]) => `<div style="top:${pct(v)}%"><b>${v}</b> <span>${t}</span></div>`).join('') + '';
+})();
+
+// ---------- Boot ----------
+readTokens();
+load();
+const ok = initThree();
+if (ok) {
+  const el = renderer.domElement;
+  el.addEventListener('pointerdown', onDown);
+  el.addEventListener('pointermove', onMove);
+  el.addEventListener('pointerup', onUp);
+  el.addEventListener('pointerleave', () => { if (!dragAp) clearHud(); });
+}
+rebuild({ fit: true });
+setTool('view');
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener && mq.addEventListener('change', readTokens);
+new MutationObserver(readTokens).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+if (ok) {
+  const clock = new THREE.Clock();
+  const loop = () => {
+    const t = clock.getElapsedTime();
+    controls.update();
+    for (const m of apMeshes) {
+      for (const ring of m.userData.rings) {
+        const ph = reduceMotion ? ring.userData.phase : (t * 0.35 + ring.userData.phase) % 1;
+        const s = 0.4 + ph * 3.2;
+        ring.scale.set(s, s, s);
+        ring.material.opacity = 0.55 * (1 - ph);
+      }
+    }
+    if (ghost && !reduceMotion) ghost.children[0].rotation.y = t;
+    renderer.render(scene, camera);
+    updateLabels();
+    requestAnimationFrame(loop);
+  };
+  loop();
+}
+})();
+</script>
