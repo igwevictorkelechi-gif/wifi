@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "name": "My home",
+  "floorHeight": 2.7,
+  "model": {
+    "band": "2.4",
+    "n": 2.0
+  },
+  "floors": [
+    {
+      "name": "Ground floor",
+      "width": 11.0,
+      "depth": 8.0
+    },
+    {
+      "name": "Floor 2",
+      "width": 10,
+      "depth": 8
+    }
+  ],
+  "walls": [],
+  "aps": [
+    {
+      "id": "ap1",
+      "name": "Main router",
+      "bssid": "a4:2b:b0:11:22:33",
+      "ssid": "HomeNet",
+      "floor": 0,
+      "x": 1.0,
+      "y": 1.2,
+      "p0": -38
+    }
+  ],
+  "networks": {
+    "a4:2b:b0:11:22:33": {
+      "ssid": "HomeNet",
+      "channel": 6,
+      "band": "2.4"
+    },
+    "f0:9f:c2:aa:bb:cc": {
+      "ssid": "Neighbour-5G",
+      "channel": 44,
+      "band": "5"
+    }
+  },
+  "samples": [
+    {
+      "floor": 0,
+      "x": 2.0,
+      "y": 2.0,
+      "label": "Sofa",
+      "readings": {
+        "a4:2b:b0:11:22:33": -39,
+        "f0:9f:c2:aa:bb:cc": -79
+      },
+      "time": "2026-11-19T09:11:51"
+    },
+    {
+      "floor": 0,
+      "x": 5.0,
+      "y": 4.0,
+      "label": "Table",
+      "readings": {
+        "a4:2b:b0:11:22:33": -52,
+        "f0:9f:c2:aa:bb:cc": -76
+      },
+      "time": "2026-11-19T09:11:51"
+    },
+    {
+      "floor": 0,
+      "x": 9.0,
+      "y": 6.0,
+      "label": "Kitchen",
+      "readings": {
+        "a4:2b:b0:11:22:33": -60,
+        "f0:9f:c2:aa:bb:cc": -70
+      },
+      "time": "2026-11-19T09:11:51"
+    },
+    {
+      "floor": 1,
+      "x": 3.0,
+      "y": 3.0,
+      "label": "Bedroom",
+      "readings": {
+        "a4:2b:b0:11:22:33": -63,
+        "f0:9f:c2:aa:bb:cc": -64
+      },
+      "time": "2026-11-19T09:11:51"
+    },
+    {
+      "floor": 1,
+      "x": 9.0,
+      "y": 6.0,
+      "label": "Office",
+      "readings": {
+        "a4:2b:b0:11:22:33": -73,
+        "f0:9f:c2:aa:bb:cc": -54
+      },
+      "time": "2026-11-19T09:11:51"
+    }
+  ]
+}
